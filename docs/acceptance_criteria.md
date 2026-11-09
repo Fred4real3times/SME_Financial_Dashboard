@@ -132,15 +132,16 @@ The import-engine automated acceptance tests are **PASS** on final QA branch hea
 - CI evidence: main commit \`41cf26cb5231ceb3e540f402fb9b944048a2315e\`, GitHub Actions run \`42634994455\`; Python 3.11/3.12/3.13 each passed Ruff, 110 tests, Alembic round-trip and SQLite foreign_key_check.
 - **Still BLOCKED:** manual browser-based Streamlit smoke test and independent security review. Phase 4 automated backend/CI acceptance is PASS; full release acceptance is not closed.
 
-## Phase 5 dashboard acceptance criteria — implementation in progress
-- DASH-01 Filters (inclusive dates, optional currency/account/category/direction) apply consistently to the selected company and comparison period.
-- DASH-02 Only validated, non-deleted transactions are included; REVIEW/staged, deleted and unvalidated rows are excluded.
-- DASH-03 Inflows, outflows and net cash flow are Decimal and partitioned by currency; no cross-currency aggregation or implicit conversion.
-- DASH-04 Monthly cash flow provides monthly inflows/outflows/net and transaction counts for each currency.
-- DASH-05 Top spending categories and counterparties rank outflows independently within each currency.
-- DASH-06 Period comparison uses the immediately preceding equal-length date interval and the same non-date filters.
-- DASH-07 Closing balance is shown only for one selected account/currency, without category/direction restrictions, and only from a unique verified opening snapshot.
-- DASH-08 No verified snapshot, or conflicting latest verified snapshots, results in an explicitly unavailable closing balance.
-- DASH-09 Snapshot creation is company-scoped, role-authorized, Decimal-validated and audited; provisional snapshots do not affect balances.
-- DASH-10 An independent Decimal reconciliation test proves totals and closing-balance calculations.
-All DASH criteria require a green branch-head CI run. Manual browser smoke test remains a separate release check.
+## Phase 5 dashboard acceptance criteria — automated PASS
+- DASH-01 Inclusive date/currency/account/category/direction filters are company-scoped and applied equally to current and comparison periods — PASS, dashboard filter integration tests.
+- DASH-02 Only validated, non-deleted transactions are included; REVIEW/staged, deleted and unvalidated records are excluded — PASS, \`test_report_uses_decimal_and_keeps_currency_partitions_and_rankings_separate\`.
+- DASH-03 Inflows, outflows and net cash flow use Decimal and remain partitioned by currency — PASS, independent XAF/USD expected-value assertions in the dashboard integration suite.
+- DASH-04 Monthly cash flow emits month/currency buckets and direction totals — PASS, dashboard monthly aggregation tests.
+- DASH-05 Top spending categories and counterparties rank outflows independently per currency — PASS, dashboard ranking integration test.
+- DASH-06 Period comparison uses the immediately preceding equal-length interval and same non-date filters — PASS, \`test_comparison_uses_equal_length_previous_period_and_same_filters\`.
+- DASH-07 Closing balance requires one account/currency, no category/direction subset and the latest unique verified snapshot — PASS, snapshot balance integration tests.
+- DASH-08 Missing verified evidence and conflicting latest snapshots make the balance unavailable — PASS, \`test_balance_is_unavailable_without_required_scope_snapshot_or_unfiltered_flow\` and \`test_conflicting_latest_verified_snapshots_make_closing_balance_unavailable\`.
+- DASH-09 Snapshot creation is company-scoped, role-authorized, Decimal-validated and audited; provisional snapshots do not affect balances — PASS, \`test_snapshot_creation_is_audited_company_scoped_and_validated\` and VIEWER denial test.
+- DASH-10 Independent Decimal expected-value checks validate current totals and closing balance — PASS, dashboard reporting integration tests.
+- CI evidence: branch head \`62eb759f2c5c480a7b7385d6939d1d7377bc398e\`, run \`42637974318\`; Python 3.11, 3.12 and 3.13 each passed Ruff, 120 tests, Alembic round-trip and SQLite foreign_key_check.
+- **Still BLOCKED:** manual browser smoke test and independent security review. Concurrent duplicate opening-snapshot submissions are only guarded by the service lookup in this iteration; database-level uniqueness is a follow-up hardening item.

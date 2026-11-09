@@ -16,7 +16,7 @@ CSV/XLSX/PDF template and mapping UI; PDF text/table extraction adapter with pag
 ## Phase 4 — Categorization and audit [COMPLETE — automated CI; manual UI smoke test outstanding]
 Category CRUD, deterministic rules/conflict handling, manual correction and before/after audit; KPI refresh test. Exit AC-03.
 
-## Phase 5 — Dashboard [IN PROGRESS]
+## Phase 5 — Dashboard [COMPLETE — automated CI; manual browser smoke test outstanding]
 Canonical filters; inflow/outflow/net; conditional balances; monthly charts, top spend/counterparties and period comparison; independent Decimal reconciliation. Exit AC-04.
 
 ## Phase 6 — Exports and history
@@ -125,3 +125,21 @@ Phase 4 (categorization and manual import review) is integrated into \`main\`. A
 - Monthly charts convert Decimal values to float only at the plotting boundary; all authoritative KPI, ranking and comparison calculations remain Decimal.
 
 Phase 5 exit requires automated tests for filter scope, Decimal and currency reconciliation, monthly buckets, rankings, equal-length comparison windows, snapshot selection/conflicts and role/audit controls. Browser smoke testing remains a separate release check.
+
+
+## Phase 5 delivery report — 2026-11-09
+**Status: automated implementation and CI PASS; manual browser validation remains open.**
+
+Implemented:
+- Company-scoped DashboardService filters for inclusive date range, optional currency, account, category and direction.
+- Only validated, non-deleted transactions enter the dashboard.
+- Decimal inflow/outflow/net totals and monthly cash flow, partitioned by currency.
+- Top-10 outflow categories and counterparties per currency.
+- Comparison with the immediately preceding contiguous interval of equal length.
+- Conditional closing balance from the latest unique verified account/currency opening snapshot; missing/conflicting evidence or incompatible filters yields Unavailable.
+- AccountSnapshotService with role authorization, Decimal validation and audit; provisional snapshots are excluded from balances.
+- Streamlit controls, currency-separated KPIs/charts/rankings, period comparison and snapshot entry.
+
+Automated evidence: commit \`62eb759f2c5c480a7b7385d6939d1d7377bc398e\`, PR #6 CI run \`42637974318\`, Python 3.11/3.12/3.13 each passed Ruff, 120 tests, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign_key_check.
+
+**Still open:** manual browser testing of filter changes, charts, snapshot creation and balance unavailability states; independent security review; concurrency-safe DB uniqueness for duplicate snapshot submissions. The service checks duplicates and the report withholds balances for multiple latest-date snapshots, but the initial schema does not include a unique snapshot key.
