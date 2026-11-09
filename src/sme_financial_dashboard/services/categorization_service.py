@@ -413,6 +413,32 @@ class CategorizationRuleService:
         )
         if rule is None:
             raise RuleNotFound("Categorization rule was not found in the active company.")
+
+        new_category_id = (
+            CategorizationRuleService._resolve_category(session, verified, category_id).id
+            if category_id is not None
+            else rule.category_id
+        )
+        new_match_field = (
+            _validated_match_field(match_field) if match_field is not None else rule.match_field
+        )
+        new_operator = (
+            _validated_match_operator(operator) if operator is not None else rule.operator
+        )
+        new_match_value = (
+            _normalize_text(
+                _display_text(match_value, field_name="Rule match value", max_length=200)
+            )
+            if match_value is not None
+            else rule.match_value
+        )
+        new_priority = (
+            _validated_priority(priority) if priority is not None else rule.priority
+        )
+        if is_active is not None and not isinstance(is_active, bool):
+            raise CategorizationError("is_active must be a boolean.")
+        new_is_active = is_active if is_active is not None else rule.is_active
+
         before = {
             "category_id": str(rule.category_id),
             "match_field": rule.match_field.value,
@@ -421,34 +447,24 @@ class CategorizationRuleService:
             "priority": rule.priority,
             "is_active": rule.is_active,
         }
-        if category_id is not None:
-            rule.category_id = CategorizationRuleService._resolve_category(
-                session, verified, category_id
-            ).id
-        if match_field is not None:
-            rule.match_field = _validated_match_field(match_field)
-        if operator is not None:
-            rule.operator = _validated_match_operator(operator)
-        if match_value is not None:
-            rule.match_value = _normalize_text(
-                _display_text(match_value, field_name="Rule match value", max_length=200)
-            )
-        if priority is not None:
-            rule.priority = _validated_priority(priority)
-        if is_active is not None:
-            if not isinstance(is_active, bool):
-                raise CategorizationError("is_active must be a boolean.")
-            rule.is_active = is_active
-        session.flush()
         after = {
-            "category_id": str(rule.category_id),
-            "match_field": rule.match_field.value,
-            "operator": rule.operator.value,
-            "match_value": rule.match_value,
-            "priority": rule.priority,
-            "is_active": rule.is_active,
+            "category_id": str(new_category_id),
+            "match_field": new_match_field.value,
+            "operator": new_operator.value,
+            "match_value": new_match_value,
+            "priority": new_priority,
+            "is_active": new_is_active,
         }
-        if before != after:
+        if before == after:
+            return rule
+        with session.begin_nested():
+            rule.category_id = new_category_id
+            rule.match_field = new_match_field
+            rule.operator = new_operator
+            rule.match_value = new_match_value
+            rule.priority = new_priority
+            rule.is_active = new_is_active
+            session.flush()
             _audit(
                 session,
                 context=verified,
@@ -458,7 +474,9 @@ class CategorizationRuleService:
                 before=before,
                 after=after,
             )
+            session.flush()
         return rule
+
 
 
 class CategorizationService:
