@@ -10,7 +10,7 @@ SMEs often have fragmented bank exports and sales/expense files, making cash mov
 - Workspace Administrator: companies, memberships, roles and settings (ADMIN).
 
 ## 3. Included in MVP
-Workspace/company setup; CSV/XLSX upload and mapping; preview and validation; blank/invalid/duplicate/outlier detection; editable categories and deterministic rules; cash-basis inflow/outflow/net KPIs; opening/closing balance when supported by snapshots; monthly charts; top expenses/customers/suppliers; filters and period comparison; CSV/PDF exports; import history and audit trail; synthetic demo data for three SMEs over 12 months.
+Workspace/company setup; CSV/XLSX/PDF upload and mapping; preview and validation; blank/invalid/duplicate/outlier detection; editable categories and deterministic rules; cash-basis inflow/outflow/net KPIs; opening/closing balance when supported by snapshots; monthly charts; top expenses/customers/suppliers; filters and period comparison; CSV/PDF exports; import history and audit trail; synthetic demo data for three SMEs over 12 months.
 
 ## 4. Explicitly excluded
 General ledger/double-entry bookkeeping, statutory accounts, certified accounting, tax filing/advice, live bank/Mobile Money integrations, scraping/webhooks, payment initiation or movement of funds, credit scoring/approval, FX conversion, public SaaS deployment, mobile app and production identity integrations.
@@ -60,3 +60,7 @@ The following decisions are accepted and supersede conflicting provisional assum
 - Ambiguous import: allow partial commit only after explicit confirmation; valid unambiguous rows commit, REVIEW rows remain staged and excluded from financial totals until resolved.
 - Identical rows without a distinguishing reference: REVIEW manually; never silently deduplicate.
 - Categorization: exactly one primary category per transaction in MVP; no split allocation.
+
+
+## PDF import scope — approved for MVP
+Accept PDF bank/account statements as a third import format alongside CSV and XLSX. MVP extraction is limited to text-based/digital PDFs whose transaction table or stable row structure can be extracted. The user must preview extracted rows, map fields and confirm before any transaction is committed. Store source page/row provenance and extraction issues. Image-only/scanned PDFs, encrypted/password-protected PDFs and unsupported layouts are detected and clearly reported; no automatic OCR is included in this version. A PDF that cannot be safely and reliably parsed must not produce guessed financial rows.
