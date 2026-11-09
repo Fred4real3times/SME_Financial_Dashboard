@@ -29,7 +29,6 @@ from sme_financial_dashboard.db.models import (
     Company,
     ImportBatch,
     ImportRow,
-    Transaction,
 )
 from sme_financial_dashboard.security.company_scope import (
     CompanyContext,
