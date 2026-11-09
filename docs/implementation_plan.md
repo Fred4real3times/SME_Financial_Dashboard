@@ -4,8 +4,8 @@
 ## Phase 0 — Baseline and contracts
 Preserve existing files; initial repo contains README.md only. Review product scope, flows, architecture, dictionary, threat model and acceptance criteria. Resolve open decisions; freeze service contracts/schema. Exit: owner explicitly approves architecture.md and data_dictionary.md.
 
-## Phase 1 — Domain and foundation
-Create Python metadata, pinned dependencies, config and .env.example. Implement Decimal money, direction, cashflow, currency partition and filters. Write unit tests first. Add SQLAlchemy models, Alembic, repositories, company context and RBAC. Exit: domain tests pass and clean migration works.
+## Phase 1 — Domain and foundation [COMPLETE]
+Created Python metadata, pinned dependencies, config and .env.example. Implemented Decimal money, direction, cashflow and per-currency partitioning. Added SQLAlchemy models, Alembic, repositories, verified company context and RBAC. Exit achieved: 33 unit/integration tests pass and a clean migration upgrades, downgrades and re-upgrades successfully. Evidence is recorded below.
 
 ## Phase 2 — Workspace, user and company
 Local authentication/password hashing, first-run admin bootstrap, workspace/company/membership/roles and authorized company selector. Test roles and tenant boundaries.
@@ -43,3 +43,29 @@ Phase 0 contract freeze now records: workspace-wide uniform role; ADMIN/ACCOUNTA
 
 ## Approved PDF implementation scope — 2026-11-09
 Implement text-based/digital PDF statement ingestion with pdfplumber, page/table/row provenance, bounded preview, manual mapping, Decimal/locale validation and mandatory confirmation. Scanned/image-only PDFs, OCR, password-protected PDFs and embedded-file extraction are excluded from MVP. Unsupported or ambiguous PDF layouts must fail safely or enter REVIEW; they must not create guessed transactions.
+
+
+## Phase 1 delivery report — 2026-11-09
+**Status: COMPLETE for the foundation scope; later product workflows remain unimplemented.**
+
+Implemented files include:
+- `pyproject.toml`, `requirements.txt`, `requirements-dev.txt`, `.env.example`, `.gitignore`, `.python-version`, `README.md`.
+- `src/sme_financial_dashboard/config.py`, `domain/money.py`, `db/base.py`, `db/models.py`, `db/session.py`.
+- `security/rbac.py`, `security/company_scope.py`.
+- `repositories/companies.py`, `repositories/transactions.py`, `repositories/import_batches.py`.
+- Alembic environment and initial tenant-aware schema.
+- Unit and integration tests covering monetary validation, currency partitioning, role permissions, active membership, workspace-wide role propagation, company-scoped repository reads, same-company foreign keys, soft-delete metadata and REVIEW-row linkage.
+
+**Commands and results**
+- `PYTHONPATH=src pytest -q` — PASS, 33 passed.
+- `DATABASE_URL=sqlite:///./.data/schema-smoke.db PYTHONPATH=src alembic upgrade head` — PASS on a fresh test database.
+- `DATABASE_URL=sqlite:///./.data/schema-smoke.db PYTHONPATH=src alembic check` — PASS, no new upgrade operations detected.
+- `DATABASE_URL=sqlite:///./.data/schema-smoke.db PYTHONPATH=src alembic downgrade base` — PASS.
+- Re-run `alembic upgrade head` after downgrade — PASS.
+- SQLite `PRAGMA foreign_key_check` — PASS, no violations.
+- `python -m compileall -q src tests alembic` — PASS.
+- Ruff checks — NOT RUN in this environment because the Ruff executable was unavailable; exact dev version is pinned for installation.
+
+**Not claimed complete:** Streamlit screens, local login/session management, first-admin bootstrap, workspace/company CRUD workflows, CSV/XLSX/PDF parser adapters, import preview/partial commit, review queue, categorization services, dashboard KPIs, exports, synthetic datasets and end-to-end QA.
+
+**Next phase:** Phase 2 — local authentication, first-run ADMIN bootstrap, workspace/company/membership management and authorized company selector. Phase 3 follows with the import vertical.

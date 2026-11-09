@@ -1,21 +1,29 @@
 # Architecture — SME Financial Dashboard
 **Status: APPROVED FOR DEVELOPMENT — owner approval recorded 2026-11-09 after inclusion of the PDF import contract.**
-Version 0.1. Repository baseline: initial commit with README.md only.
+Version 0.2. Phase 1 foundation implementation recorded 2026-11-09.
 
 ## Goals and stack
-Local-first demonstrable modular monolith. Python 3.11+; Streamlit UI; Pandas ingestion; Python Decimal money; SQLAlchemy 2.x; SQLite local single-instance; PostgreSQL before concurrent/hosted multi-user use; Alembic migrations; Pydantic command/filter validation; Plotly charts; pytest; openpyxl XLSX; pdfplumber for text/table extraction from digital PDFs; ReportLab for PDF report generation; Ruff. Docker Compose optional. Pin exact dependency versions during implementation after environment check.
+Local-first demonstrable modular monolith. Python 3.11+; Streamlit 1.67.0 UI; Pandas 2.2.3 ingestion; Python Decimal money; SQLAlchemy 2.0.50; SQLite local single-instance; PostgreSQL before concurrent/hosted multi-user use; Alembic 1.18.4 migrations; Pydantic 2.13.5 command/filter validation; Plotly 6.5.2 charts; pytest 9.0.2; openpyxl 3.1.5 XLSX; pdfplumber 0.11.9 for text/table extraction from digital PDFs; ReportLab 4.4.9 for PDF report generation; Ruff 0.17.4. Docker Compose optional. Runtime and development dependencies are pinned in requirements.txt and requirements-dev.txt.
 
 ## Boundaries
 Streamlit app → application services (Workspace, Authorization, Import, Transaction, Categorization, Dashboard, Export, Audit) → domain (money, cashflow, validation, rules, fingerprint) → repositories/SQLAlchemy/models/migrations → SQLite. Keep calculations testable without UI. No FastAPI/React in MVP unless separately approved.
 
 ## Proposed layout
-app/; services/; domain/; data/models, repositories, migrations; tests/unit, integration, workflows, security; scripts/; sample_data/; docs/; .env.example; .gitignore; pyproject.toml; README.md; optional Dockerfile/compose.yaml.
+src/sme_financial_dashboard/{domain,db,security,repositories}; alembic/{versions,env.py}; tests/{unit,integration,workflows,security}; scripts/; sample_data/; docs/; .env.example; .gitignore; pyproject.toml; requirements.txt; requirements-dev.txt; README.md; optional Dockerfile/compose.yaml.
 
 ## Tenant isolation
 Workspace contains Companies; WorkspaceMembership links User and role. Every financial record carries company_id. Resolve CompanyContext from authenticated identity and membership; never trust a UI-supplied company_id. Every repository query and export includes company scope. Validate same-company foreign keys. Test cross-company reads, writes, dashboard, audit and exports. SQLite has no PostgreSQL RLS; hosted/concurrent deployment requires PostgreSQL and RLS/security assessment.
 
 ## Import pipeline
-Allow CSV, XLSX and PDF only; validate allowlisted extension and actual file signature/content, size/page/row limits and parser output; show bounded preview; no writes before confirmation. Require date, amount, currency and direction or explicit signed convention. Parse explicit date/decimal settings; normalize currency uppercase; use Decimal; retain sanitized source row/mapping. Classify BLANK/INVALID/DUPLICATE/VALID/VALID_WITH_WARNING. Versioned SHA-256 fingerprint from normalized business fields, scoped by company. Atomic commit of ImportBatch, ImportRow, Transaction and AuditEvent. Repeated exact rows are idempotent. Identical legitimate rows lacking a distinguishing reference are inherently ambiguous and must be reviewed, not artificially distinguished.
+Allow CSV, XLSX and PDF only. Validate allowlisted extension and actual file signature/content, size/page/row limits and parser output; show bounded preview; no writes before confirmation. Require date, amount, currency and direction or an explicitly configured signed-amount convention. Use explicit date/decimal parsing settings, normalized uppercase currency codes and Decimal; retain sanitized source row/mapping and import provenance.
+
+- CSV: explicit delimiter/encoding and field mapping.
+- XLSX: explicit worksheet selection and field mapping; never execute macros or workbook formulas.
+- PDF: pdfplumber text/table extraction from digital PDFs, page by page, with source page/table/row provenance. Require preview and manual mapping. No OCR, scanned/image-only PDF parsing, password-protected PDF parsing or embedded-file extraction in MVP. Never execute PDF actions or JavaScript.
+- Classification: BLANK, INVALID, DUPLICATE, VALID, VALID_WITH_WARNING and REVIEW. Identical candidates with no distinguishing reference enter REVIEW.
+- Partial commit: show separate counts and require explicit confirmation. Accepted VALID rows are committed atomically with ImportBatch, ImportRow, Transaction and AuditEvent; REVIEW rows remain staged without a transaction link until resolved by an authorized user. Invalid and duplicate rows are not imported.
+- Fingerprint: versioned SHA-256 scoped by company; exact field normalization is finalized in the import vertical before production use.
+- Fail safely on malformed/unsupported/over-limit input. Uncertain date, amount, currency, direction or table alignment must not be guessed.
 
 ## Financial contract
 amount > 0 Decimal; direction INFLOW/OUTFLOW. inflows=sum(INFLOW), outflows=sum(OUTFLOW), net=inflows-outflows. Partition by currency. Closing balance = coherent opening snapshot + net flow for same company/account/currency/period; absent snapshot => Unavailable. Label estimated/unverified balance. These are cash-management indicators, not accounting profit or certified bank balance. MonthlyMetric derived at query time.
@@ -37,8 +45,8 @@ ExportService.export(filters, format, CompanyContext) → filtered CSV/PDF bytes
 AuditService.list(filters, CompanyContext) → scoped events.
 No public HTTP API required for MVP.
 
-## Proposed permissions
-ADMIN: all functions and membership/settings management. ACCOUNTANT: view/export/import/categories/rules/corrections/audit. VIEWER: view/export only. Enforce in services.
+## Approved permissions
+One role per WorkspaceMembership applies uniformly across every company in that workspace. ADMIN: all functions and workspace/membership management, including transaction restore. ACCOUNTANT: view/export/import/categories/rules/corrections/audit and soft-delete. VIEWER: view/export only. ADMIN and ACCOUNTANT may soft-delete with a reason; only ADMIN may restore. Enforce permissions in services, not only in UI.
 
 ## Security and operations
 Hash local passwords; no default production credential; secrets in environment only; .env.example contains placeholders; bounded file parsing; no macro execution; ORM parameterization; CSV formula escaping; redacted logs; append-only audit through application services; demo seed/reset and backup/restore instructions. No live financial integrations.
@@ -67,3 +75,17 @@ These decisions supersede earlier proposals where they differ.
 
 ## PDF import decision record — approved 2026-11-09
 Supported input formats: CSV, XLSX and PDF. Implement a PDF adapter using pdfplumber for text/table extraction from digital PDFs. Retain page number, table index and extracted row position for each PDF-derived candidate. Require bounded preview, manual mapping and explicit confirmation; use the same Decimal, currency, duplicate, REVIEW, audit, company-isolation and partial-commit rules as other import formats. Scanned/image-only PDFs without a text layer, encrypted/password-protected PDFs, OCR, password cracking and embedded-file extraction are out of MVP. Never execute PDF JavaScript/actions or treat parsed content as instructions. Reject malformed or over-limit documents; when table structure is uncertain, return a clear error or stage rows as REVIEW rather than guessing. No persistent retention of the original uploaded PDF is required for the MVP; retain checksum, filename metadata, extraction metadata and row provenance.
+
+
+## Phase 1 foundation implementation — 2026-11-09
+Implemented and locally verified:
+- `src/sme_financial_dashboard/config.py`: environment settings and SQLite directory preparation.
+- `domain/money.py`: positive Decimal parsing, six-place NUMERIC(20,6) capacity guard, inflow/outflow and per-currency cash-flow totals; no float conversion or cross-currency netting.
+- `db/models.py`: workspace, company, user, membership, import batch/row, category/rule, transaction, account snapshot and audit-event SQLAlchemy models.
+- `db/session.py`: SQLite-aware engine, foreign-key enforcement and session scope.
+- `security/rbac.py` and `security/company_scope.py`: workspace-wide role permissions and verified company context.
+- Company, transaction and import-history repositories with company-scoped reads.
+- Alembic initial migration, pinned dependency manifests, README and .env.example.
+- Integration and unit tests for Decimal behavior, permissions, workspace role propagation, active-company access, tenant-scoped reads, soft-delete defaults, same-company foreign keys and REVIEW-row invariants.
+
+Local evidence: `PYTHONPATH=src pytest -q` → 33 passed; Alembic fresh upgrade, `alembic check`, downgrade to base and re-upgrade → passed; SQLite `PRAGMA foreign_key_check` → no violations; `python -m compileall -q src tests alembic` → passed. Ruff was not executed in the session because the Ruff binary was not installed there; Ruff is pinned in the development requirements. No Streamlit UI or end-to-end import workflow is claimed complete.

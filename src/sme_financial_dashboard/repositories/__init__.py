@@ -1,0 +1,1 @@
+"""Company-scoped persistence queries."""

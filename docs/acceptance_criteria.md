@@ -31,7 +31,7 @@ Unit: Decimal calculations, parsing, fingerprint, categorization, filters. Integ
 ## Evidence matrix template
 | ID | Status | Command/test | Expected | Observed | Evidence |
 |---|---|---|---|---|---|
-| AC-01 | BLOCKED | Not run — implementation awaits approval | Valid import and counts | Not observed | No application code yet |
+| AC-01 | BLOCKED | Not run — import vertical is Phase 3 | Valid import and counts | Not observed | Foundation only; no import workflow yet |
 
 ## Definition of Done
 All required criteria PASS with reproducible evidence; no P0/P1 issue; clean-clone README works; limits documented; no fake integration or inert control presented as operational.
@@ -58,3 +58,20 @@ All criteria remain BLOCKED until implementation and evidence exist.
 - PDF-07 PDF import obeys the same tenant isolation, role authorization, duplicate detection, Decimal validation, partial commit, audit and provenance rules as CSV/XLSX.
 - PDF-08 PDF actions/scripts and embedded attachments are never executed or extracted.
 All PDF criteria remain BLOCKED until automated tests and workflow evidence are produced.
+
+
+## Foundation verification — Phase 1 evidence (not a substitute for product acceptance)
+| Check | Status | Command / evidence |
+|---|---|---|
+| Decimal parsing and currency partitioning | PASS | Covered by unit tests |
+| Workspace role permission matrix | PASS | Covered by unit tests |
+| Membership-based company context | PASS | Cross-workspace and inactive-user negative tests |
+| Company-scoped repository reads | PASS | Cross-company transaction cannot be returned |
+| Database tenant constraints | PASS | Cross-company category and transaction links rejected |
+| Soft-delete metadata / REVIEW invariants | PASS | Database check-constraint integration tests |
+| Initial database migration | PASS | Fresh upgrade, Alembic check, downgrade and re-upgrade |
+| SQLite foreign-key integrity | PASS | `PRAGMA foreign_key_check` returned no rows |
+| Full foundation suite | PASS | `PYTHONPATH=src pytest -q` — 33 passed |
+| Ruff lint/format | NOT RUN | Ruff executable not installed in the development session |
+
+Product acceptance IDs AC-01..AC-06, IMP, FIN, CAT, EXP, AUD, SEC, OPS and PDF remain BLOCKED until their respective vertical workflows are built and tested. Foundation test success must not be represented as end-to-end MVP acceptance.
