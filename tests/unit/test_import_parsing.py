@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
+import zipfile
 
 import pytest
 from openpyxl import Workbook
@@ -13,6 +14,7 @@ from sme_financial_dashboard.domain.import_parsing import (
     MAX_IMPORT_ROWS,
     MAX_PDF_PAGES,
     MAX_UPLOAD_BYTES,
+    MAX_XLSX_ARCHIVE_ENTRIES,
     ImportFileError,
     inspect_statement,
 )
@@ -183,3 +185,52 @@ def test_pdf_page_limit_is_enforced():
     with pytest.raises(ImportFileError) as error:
         inspect_statement(_pdf_with_pages(MAX_PDF_PAGES + 1), "too-many-pages.pdf")
     assert error.value.code == "PDF_PAGE_LIMIT_EXCEEDED"
+
+
+
+def test_xlsx_archive_entry_limit_is_enforced():
+    workbook = Workbook()
+    workbook.active.append(["Date", "Amount"])
+    original = BytesIO()
+    workbook.save(original)
+    expanded = BytesIO()
+    with zipfile.ZipFile(BytesIO(original.getvalue())) as source:
+        with zipfile.ZipFile(expanded, "w", compression=zipfile.ZIP_DEFLATED) as target:
+            for member in source.infolist():
+                target.writestr(member.filename, source.read(member.filename))
+            for index in range(MAX_XLSX_ARCHIVE_ENTRIES):
+                target.writestr(f"extra/{index}.txt", b"")
+    with pytest.raises(ImportFileError) as error:
+        inspect_statement(expanded.getvalue(), "entry-bomb.xlsx")
+    assert error.value.code == "XLSX_ENTRY_LIMIT_EXCEEDED"
+
+
+def test_pdf_table_rejects_rows_with_missing_columns(monkeypatch):
+    class FakePage:
+        def extract_text(self):
+            return "Date Amount Currency"
+
+        def extract_tables(self):
+            return [
+                [
+                    ["Date", "Amount", "Currency"],
+                    ["2026-01-01", "100.00"],
+                ]
+            ]
+
+    class FakePdf:
+        pages = [FakePage()]
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(
+        "sme_financial_dashboard.domain.import_parsing.pdfplumber.open",
+        lambda *_args, **_kwargs: FakePdf(),
+    )
+    with pytest.raises(ImportFileError) as error:
+        inspect_statement(b"%PDF-1.7\nplaceholder", "broken-table.pdf")
+    assert error.value.code == "PDF_TABLE_LAYOUT_AMBIGUOUS"
