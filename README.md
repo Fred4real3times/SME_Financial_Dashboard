@@ -99,9 +99,9 @@ ruff format --check .
 
 ## Current implementation status
 
-Phase 1 foundation includes project metadata, exact dependency pins, environment configuration, money-domain primitives, SQLAlchemy models, SQLite session factory, workspace RBAC/company scope, company-scoped repositories, an Alembic initial migration and foundation tests.
+The current development branch contains the approved local-first MVP workflows: authentication and workspace/company management; CSV/XLSX/digital-PDF import preview, validation and confirmed partial commit; REVIEW resolution; categorization rules; currency-separated dashboard and conditional opening-balance calculations; filtered CSV/PDF exports and history; synthetic SME data; SQLite backup/restore; verified-snapshot uniqueness; and time-bounded parser execution.
 
-Phase 2 adds first-run ADMIN bootstrap, Argon2id password hashing, HMAC-signed session tokens backed by revocable database sessions, workspace/company creation, membership and role management, and an authenticated Streamlit shell. Import adapters, transaction services, dashboards and exports remain later vertical phases. A passing foundation or Phase 2 test suite does not mean the end-to-end MVP is complete.
+`main` and the development branch remain separate until the open pull request is merged. Automated CI does not replace clean Windows/WSL installation, interactive CLI, browser visual/workflow testing, manual restore or independent security review. The application remains a local single-instance SQLite MVP, not certified accounting software or a hosted multi-user platform.
 
 ## Security notes
 
@@ -134,7 +134,7 @@ Phase 3 branch head 64e50231bf228e251fb529b20655b89eba62b6cf passed GitHub Actio
 
 
 ### Phase 3 QA hardening
-CSV rows are streamed; XLSX ZIP entry, expanded-size, compression-ratio and column limits are checked; PDF encryption, table widths, page/table/row/character bounds are checked. SQLite duplicate lookups are chunked and transaction commits batch inserts before linking staged source rows. The parser has no hard wall-clock CPU timeout and is intended for the local single-instance app only, not a public upload endpoint.
+CSV rows are streamed; XLSX ZIP entry, expanded-size, compression-ratio and column limits are checked; PDF encryption, table widths, page/table/row/character bounds are checked. SQLite duplicate lookups are chunked and transaction commits batch inserts before linking staged source rows. Statement extraction runs in a disposable child process with a 30-second wall-clock limit. The worker is terminated on timeout. This is not an OS sandbox or memory quota; keep the application local and do not expose upload parsing as a public service.
 
 
 ## Categories, rules and manual import review (Phase 4)
@@ -185,4 +185,4 @@ Restore only after stopping Streamlit. The command verifies SQLite integrity and
 The Phase 7 synthetic dataset and SQLite backup/restore work on branch \`feat/phase-7-qa-tooling\`, head \`4687979753a7f6f4f444f2b541eac965a6d3cd2c\`, passed GitHub Actions run [42651239061](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42651239061): Ruff, 142 tests per Python 3.11/3.12/3.13 job, Alembic round-trip and SQLite foreign_key_check. Per SME profile, 100 valid transactions are committed and the 4 noisy rows remain held (1 INVALID, 1 DUPLICATE, 2 REVIEW). This is feature-branch evidence pending review/merge. The interactive CLI has not been run manually; browser visual QA and independent external security review remain open.
 
 
-The Phase 7 CI run above validates the pre-rebase feature-branch head. The rebased branch must pass CI again before merge consideration.
+The Phase 7 QA report is historical evidence for the implementation commit it reviewed. The exact updated development branch head must pass CI after the release-hardening changes before merge consideration.

@@ -27,8 +27,7 @@ py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
 
 python -m pip install --upgrade pip
-python -m pip install -r requirements-dev.txt
-python -m pip install -e .
+python -m pip install -e ".[dev]"
 
 Copy-Item .env.example .env
 python scripts/generate_session_secret.py
@@ -51,8 +50,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 
 python -m pip install --upgrade pip
-python -m pip install -r requirements-dev.txt
-python -m pip install -e .
+python -m pip install -e ".[dev]"
 
 cp .env.example .env
 python scripts/generate_session_secret.py
@@ -73,7 +71,7 @@ alembic check
 
 For a fresh database migration round-trip, use a disposable test database and follow the CI workflow; do not downgrade a database containing data you wish to retain.
 
-The latest recorded Phase 7 implementation run is linked in `docs/qa_phase_7_report.md`: 143 tests passed on each of Python 3.11, 3.12 and 3.13, with Ruff, migration round-trip and SQLite foreign-key checks. Re-run the checks on the exact release candidate commit.
+The Phase 7 report records 143 passing tests on Python 3.11, 3.12 and 3.13 for the reviewed Phase 7 implementation. The release-hardening commit must independently pass the same matrix and migration round-trip before it is accepted.
 
 ## 5. Generate the synthetic demonstration database
 
@@ -193,6 +191,8 @@ The report must identify findings by severity, provide reproducible evidence and
 | Synthetic dataset integration tests | PASS | Three demo SMEs; 300 committed transactions; 312 staged rows |
 | SQLite backup/restore integration tests | PASS | Integrity, foreign-key, schema, checksum and overwrite tests |
 | Incomplete-schema backup rejection | PASS | Regression test in Phase 7 |
+| Verified snapshot uniqueness | PENDING CI | Partial unique index and duplicate-insert regression test |
+| Parser wall-clock limit | PENDING CI | Worker timeout, normal parse and stable error-code tests |
 | Clean Windows installation | BLOCKED | Tester completes section 2 |
 | Clean WSL2 installation | BLOCKED | Tester completes section 3 |
 | Interactive synthetic CLI | BLOCKED | Manual execution and observed output |

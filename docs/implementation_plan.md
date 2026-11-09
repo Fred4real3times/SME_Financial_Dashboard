@@ -25,7 +25,7 @@ CSV/PDF from the same company-scoped DashboardFilters; CSV formula-injection def
 ## Phase 7 — Synthetic data and backup/restore tooling [AUTOMATED TESTS PASS ON PRE-REBASE FEATURE BRANCH]
 Generate 12 months for three SME profiles through the production import workflow; validate counts, categorization, REVIEW quarantine and verified snapshots. Add verified SQLite backup/restore tooling with atomic publication, integrity checks and explicit overwrite controls. Run unit/integration/workflow/security regression tests; record independent QA report and limitations. External security review and manual browser QA remain separate release gates. Re-run CI after rebasing before merge. Exit AC-06 and all required automated tests.
 
-## Phase 8 — Release
+## Phase 8 — Release hardening and operations
 Clean clone install on Windows/WSL; Docker optional; synthetic samples only; demo script; PASS/FAIL/BLOCKED evidence matrix; residual limitations.
 
 ## Exclusive ownership
@@ -188,3 +188,10 @@ The merged Phase 6 commit was followed by a matrix run that exposed a UI smoke a
 
 
 Post-rebase CI is required on the new exact branch head before Phase 7 can be considered merge-ready.
+
+### Release hardening delivery — implementation added; exact-head CI pending
+- Added a partial unique database index for verified opening snapshots keyed by company/account/date/currency. The migration refuses to proceed when legacy data already contains conflicting verified snapshots; it never chooses or deletes a financial value automatically.
+- Added disposable parser workers for CSV, XLSX and digital PDF extraction and XLSX worksheet discovery, with a 30-second wall-clock deadline and stable error codes.
+- Added regression coverage for duplicate verified snapshot insertion, bounded parsing, timeout termination and parser error propagation.
+- Exact-head CI must pass on Python 3.11, 3.12 and 3.13, including Ruff, tests, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign-key checks.
+- Manual Windows/WSL install, interactive synthetic CLI, browser workflow/visual QA, restore operation and independent security review remain external release gates.

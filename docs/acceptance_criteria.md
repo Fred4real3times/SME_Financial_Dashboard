@@ -188,3 +188,8 @@ Phase 7 automated evidence (feature branch; not yet integrated into main):
 
 
 - **Rebased PR head:** automated CI must be rerun against the new rebased commit before merge; prior feature-branch CI is not treated as evidence for the rebased commit.
+
+## Release hardening addendum — 2026-11-09
+- SNAP-01: the database permits at most one verified opening snapshot per company/account/date/currency, including concurrent submissions; a conflicting submission is rejected without a second audit record.
+- IMP-21: CSV/XLSX/PDF parser execution has a 30-second wall-clock deadline in a disposable child process; timeouts return the stable `PARSER_TIMEOUT` code and leave the Streamlit parent process responsive.
+- IMP-22: worksheet discovery for XLSX is subject to the same parser process deadline as full extraction.
