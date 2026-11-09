@@ -28,6 +28,7 @@ from sme_financial_dashboard.domain.fingerprints import (
     transaction_fingerprint,
 )
 from sme_financial_dashboard.domain.money import MoneyValidationError, parse_amount
+from sme_financial_dashboard.services.categorization_service import CategorizationService
 from sme_financial_dashboard.security.company_scope import (
     CompanyContext,
     resolve_company_context,
@@ -361,6 +362,9 @@ class ReviewService:
                     )
                     session.add(created_transaction)
                     session.flush()
+                    CategorizationService.apply_rules_to_transactions(
+                        session, verified, transactions=[created_transaction]
+                    )
                     row.normalized_values_json = corrected
                     row.row_status = ImportRowStatus.VALID_WITH_WARNING
                     row.review_decision = ReviewDecision.CORRECTED_AND_ACCEPTED

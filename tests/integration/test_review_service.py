@@ -27,6 +27,11 @@ from sme_financial_dashboard.services.review_service import (
     ReviewResolutionError,
     ReviewService,
 )
+from sme_financial_dashboard.services.categorization_service import (
+    CategorizationRuleService,
+    CategoryService,
+)
+from sme_financial_dashboard.db.models import CategoryKind, MatchField, MatchOperator
 
 
 def _context(session, *, role=MembershipRole.ACCOUNTANT, suffix="review"):
@@ -159,6 +164,18 @@ def test_review_resolution_can_confirm_duplicate_or_reject_with_audit(session):
 
 def test_corrected_review_row_creates_transaction_with_manual_reference(session):
     _workspace, _user, company, context = _context(session, suffix="corrected")
+    category = CategoryService.create_category(
+        session, context, name="Reviewed inflows", kind=CategoryKind.INFLOW
+    )
+    CategorizationRuleService.create_rule(
+        session,
+        context,
+        category_id=category.id,
+        match_field=MatchField.KEYWORD,
+        operator=MatchOperator.CONTAINS,
+        match_value="customer payment",
+        priority=100,
+    )
     preview = _review_preview(session, context)
     row = session.scalar(
         select(ImportRow)
@@ -186,6 +203,8 @@ def test_corrected_review_row_creates_transaction_with_manual_reference(session)
     assert transaction.reference == "MANUAL-REVIEW-001"
     assert transaction.amount == Decimal("100.00")
     assert transaction.direction is Direction.INFLOW
+    assert transaction.category_id == category.id
+    assert transaction.categorization_source.value == "RULE"
     assert row.review_decision is ReviewDecision.CORRECTED_AND_ACCEPTED
     assert row.reviewed_by_user_id == context.user_id
     assert row.reviewed_at is not None
