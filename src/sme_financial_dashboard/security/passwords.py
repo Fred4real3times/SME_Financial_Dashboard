@@ -21,7 +21,11 @@ class PasswordError(ValueError):
 
 
 def validate_password(password: str) -> None:
-    if not isinstance(password, str) or not 12 <= len(password) <= 128:
+    if not isinstance(password, str):
+        raise PasswordError("Password must be a string")
+    if not password.strip():
+        raise PasswordError("Password must not consist only of whitespace")
+    if not 12 <= len(password) <= 128:
         raise PasswordError("Password must contain between 12 and 128 characters")
     if "\x00" in password:
         raise PasswordError("Password contains an unsupported null character")
