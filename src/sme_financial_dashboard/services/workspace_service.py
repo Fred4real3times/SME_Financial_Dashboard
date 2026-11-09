@@ -118,7 +118,7 @@ class WorkspaceService:
         name: str,
         base_currency: str,
         timezone: str = "Africa/Douala",
-        is_demo: bool = True,
+        is_demo: bool = False,
     ) -> Company:
         verified = _admin_context(session, context)
         try:
@@ -171,9 +171,7 @@ class WorkspaceService:
     def list_members(
         session: Session, context: WorkspaceContext
     ) -> list[tuple[WorkspaceMembership, User]]:
-        verified = resolve_workspace_context(
-            session, user_id=context.user_id, workspace_id=context.workspace_id
-        )
+        verified = _admin_context(session, context)
         statement = (
             select(WorkspaceMembership, User)
             .join(User, User.id == WorkspaceMembership.user_id)
