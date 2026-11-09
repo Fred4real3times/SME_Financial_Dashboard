@@ -328,7 +328,7 @@ if companies:
                     format_func=lambda value: "Tab" if value == "Tab" else value,
                     key=f"csv_delimiter_{chosen}",
                 )
-                delimiter = "\\t" if delimiter_label == "Tab" else delimiter_label
+                delimiter = "\t" if delimiter_label == "Tab" else delimiter_label
                 encoding = st.selectbox(
                     "CSV encoding",
                     options=["utf-8-sig", "utf-8", "cp1252", "latin-1"],

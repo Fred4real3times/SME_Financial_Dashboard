@@ -84,7 +84,7 @@ def _check_size(file_bytes: bytes) -> None:
 def list_xlsx_worksheets(file_bytes: bytes) -> tuple[str, ...]:
     """Return worksheet names after the same bounded ZIP checks as the XLSX parser."""
     _check_size(file_bytes)
-    if not file_bytes.startswith(b"PK\\x03\\x04") or not zipfile.is_zipfile(io.BytesIO(file_bytes)):
+    if not file_bytes.startswith(b"PK\x03\x04") or not zipfile.is_zipfile(io.BytesIO(file_bytes)):
         raise ImportFileError("FILE_SIGNATURE_MISMATCH", "The file is not a valid XLSX ZIP container.")
     try:
         with zipfile.ZipFile(io.BytesIO(file_bytes)) as archive:
