@@ -49,3 +49,7 @@ A-09 MonthlyMetric calculated at query time, not stored as source of truth.
 A-10 Africa/Douala proposed demo timezone, configurable per company.
 
 **Release boundary:** local synthetic demo first. Real-data pilot only after explicit authorization and review. Production integrations require contracts, legal basis, credentials/secrets and security approval.
+
+
+## Decision addendum — 2026-11-09 (owner decisions)
+The following decisions are accepted and supersede conflicting provisional assumptions: (1) transaction deletion is SOFT DELETE only: mark inactive/deleted with actor, timestamp and reason; retain original row, provenance and audit history; exclude inactive transactions from ordinary KPIs/exports by default, with authorized history access. Hard deletion is not an ordinary user operation. (2) Ambiguous import rows use REVIEW: stage and isolate them for manual resolution; do not auto-import or silently discard them; valid unambiguous rows may proceed only if batch preview clearly separates review rows and the user confirms the partial outcome. (3) Access model is WORKSPACE: one user may belong to a workspace and access multiple companies through workspace membership/role; company-level authorization and company scoping remain mandatory. The exact role scope (workspace-wide vs per-company overrides) remains to be finalized below.
