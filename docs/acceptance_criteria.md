@@ -90,3 +90,7 @@ Product acceptance IDs AC-01..AC-06, IMP, FIN, CAT, EXP, AUD, SEC, OPS and PDF r
 - WS-05 The last active ADMIN cannot be demoted or deactivated.
 - WS-06 All workspace/company lists and company selection are membership-scoped and checked server-side.
 These criteria remain BLOCKED until CI/local test evidence for the Phase 2 branch is recorded.
+
+
+## CI gate
+A green GitHub Actions run for the tested commit is required before a phase is reported complete. The CI job must run the whole test suite, Ruff checks and fresh-database migration round-trip on each supported Python minor version.

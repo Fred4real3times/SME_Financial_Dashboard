@@ -189,6 +189,7 @@ class WorkspaceService:
         verified = _admin_context(session, context)
         normalized_email = normalize_email(email)
         cleaned_name = _clean_name(display_name, field="Display name", maximum=120)
+        role = MembershipRole(role)
         user = session.scalar(select(User).where(User.email == normalized_email))
         temporary_password = None
         if user is None:

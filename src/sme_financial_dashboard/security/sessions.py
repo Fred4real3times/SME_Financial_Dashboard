@@ -110,7 +110,12 @@ def authenticate_session(session: Session, token: str, *, secret: str) -> User |
     record = session.scalar(select(AuthSession).where(AuthSession.id == claims.session_id))
     if record is None or record.user_id != claims.user_id or record.revoked_at is not None:
         return None
-    if record.expires_at.replace(tzinfo=UTC) <= datetime.now(UTC):
+    expiry = record.expires_at
+    if expiry.tzinfo is None:
+        expiry = expiry.replace(tzinfo=UTC)
+    else:
+        expiry = expiry.astimezone(UTC)
+    if expiry <= datetime.now(UTC):
         return None
     token_hash = hashlib.sha256(token.encode("ascii")).hexdigest()
     if not hmac.compare_digest(record.token_hash, token_hash):

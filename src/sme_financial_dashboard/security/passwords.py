@@ -33,7 +33,11 @@ def hash_password(password: str) -> str:
 
 
 def verify_password(password_hash: str, password: str) -> bool:
-    if not isinstance(password, str) or not isinstance(password_hash, str):
+    if (
+        not isinstance(password, str)
+        or not isinstance(password_hash, str)
+        or len(password) > 128
+    ):
         return False
     try:
         return _hasher.verify(password_hash, password)

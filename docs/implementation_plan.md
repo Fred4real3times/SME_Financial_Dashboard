@@ -73,3 +73,7 @@ Implemented files include:
 
 ## Phase 2 delivery scope
 The Phase 2 branch contains the authentication service, Argon2id helpers, HMAC-signed session tokens backed by database session records, first-run bootstrap guard, workspace/company/member management services, a minimal authenticated Streamlit shell, migration and tests. The phase must not be reported complete until the branch test suite and clean migration checks have been executed against these exact committed files.
+
+
+## Phase 2 CI hardening — 2026-11-09
+Added automated GitHub Actions checks for Python 3.11–3.13: dependency installation, pytest, Ruff lint/format, clean Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign-key integrity. Phase 2 completion depends on a green run for the branch head.

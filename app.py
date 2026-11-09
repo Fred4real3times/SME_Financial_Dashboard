@@ -21,7 +21,7 @@ st.set_page_config(page_title="SME Financial Dashboard", page_icon="📊", layou
 def get_runtime():
     settings = Settings.from_environment()
     engine = build_engine(settings.database_url)
-    factory = build_session_factory(settings)
+    factory = build_session_factory(settings, engine=engine)
     return settings, engine, factory
 
 
@@ -255,5 +255,38 @@ with col_b:
         for membership, member_user in members:
             status = "active" if membership.is_active else "inactive"
             st.caption(f"{member_user.email} · {membership.role.value} · {status}")
+            if membership.is_active:
+                action_col, role_col = st.columns([1, 2])
+                with role_col:
+                    proposed_role = st.selectbox(
+                        f"Role for {member_user.email}",
+                        options=list(MembershipRole),
+                        index=list(MembershipRole).index(membership.role),
+                        key=f"role_{membership.id}",
+                        format_func=lambda value: value.value,
+                    )
+                with action_col:
+                    if st.button("Update role", key=f"update_role_{membership.id}"):
+                        try:
+                            with session_factory() as db, db.begin():
+                                WorkspaceService.update_member_role(
+                                    db, workspace_context,
+                                    membership_id=membership.id,
+                                    new_role=proposed_role,
+                                )
+                            st.success("Role updated.")
+                            st.rerun()
+                        except WorkspaceError as exc:
+                            st.error(str(exc))
+                    if st.button("Deactivate", key=f"deactivate_{membership.id}"):
+                        try:
+                            with session_factory() as db, db.begin():
+                                WorkspaceService.deactivate_member(
+                                    db, workspace_context, membership_id=membership.id
+                                )
+                            st.success("Member deactivated.")
+                            st.rerun()
+                        except WorkspaceError as exc:
+                            st.error(str(exc))
     else:
         st.caption("Only workspace ADMIN can manage members.")
