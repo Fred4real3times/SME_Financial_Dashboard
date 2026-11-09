@@ -54,3 +54,12 @@ Approve A-01..A-10 in product_scope.md; workspace/company/membership and roles; 
 - Deletion policy: SOFT DELETE. Add lifecycle fields (e.g. is_active/deleted_at/deleted_by_user_id/deletion_reason) or an equivalent auditable status. Exclude deleted rows from standard dashboard/list/export queries; retain records, ImportRow links and AuditEvent. Restore behavior and permission to delete/restore remain open.
 - Ambiguous import policy: REVIEW. Ambiguous rows are staged with stable reason codes and cannot become transactions until manual resolution. Batch preview must report accepted, invalid, duplicate and review counts separately. Whether valid rows can be committed while review rows remain staged is still open; safest proposal is explicit partial commit after user confirmation.
 - Access model: WORKSPACE. A user can access multiple companies via WorkspaceMembership. Resolve authorization on every request/service call and enforce company_id on all finance queries. Whether membership role applies uniformly to all workspace companies or supports company-specific overrides remains open.
+
+
+## Final owner decisions — 2026-11-09 (accepted)
+1. **Workspace role scope:** one role per WorkspaceMembership, applied uniformly to every company in that workspace. Membership still does not grant access to companies outside that workspace.
+2. **Soft deletion/restoration:** ADMIN and ACCOUNTANT may soft-delete with mandatory reason; ADMIN alone may restore. Preserve transaction, import provenance and audit; exclude soft-deleted rows from default operational views, KPIs and exports.
+3. **Partial import:** after explicit confirmation of the preview, commit valid unambiguous rows; keep REVIEW rows staged and excluded from transactions/KPIs until resolved. Invalid and duplicate rows remain separately classified. Commit accepted rows atomically.
+4. **Identical rows without reference:** classify as REVIEW for manual resolution; do not silently deduplicate.
+5. **Categorization:** one primary category per transaction; split allocations are out of MVP scope.
+These decisions supersede earlier proposals where they differ.
