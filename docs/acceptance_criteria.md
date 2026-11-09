@@ -147,7 +147,7 @@ The import-engine automated acceptance tests are **PASS** on final QA branch hea
 - **Still BLOCKED:** manual browser smoke test and independent security review. Concurrent duplicate opening-snapshot submissions are only guarded by the service lookup in this iteration; database-level uniqueness is a follow-up hardening item.
 
 
-## Phase 6 export and history acceptance criteria — implementation in progress
+## Phase 6 export and history acceptance criteria — automated PASS on main
 - EXP-01 PASS — exact DashboardFilters object is constructed once and consumed by both dashboard report and export; CSV integration tests.
 - EXP-02 PASS — CSV/PDF filtered-row, tenant, unvalidated and soft-delete integration tests.
 - EXP-03 PASS — formula prefix utility and CSV integration tests cover all user-controlled text columns and leading control/whitespace patterns.
@@ -159,11 +159,11 @@ The import-engine automated acceptance tests are **PASS** on final QA branch hea
 - AUD-01 PASS — company-scoped ordered/paginated audit events; integration tests.
 - AUD-02 PASS — ADMIN/ACCOUNTANT audit permission, VIEWER denial and VIEWER export/import-history access tests.
 - AUD-03 PASS — Streamlit smoke test plus code path displays audit metadata only, not before/after JSON payloads.
-- Current implementation branch and CI evidence will be recorded after tests pass. Manual browser review remains separate.
+- Post-merge CI evidence: main commit `bead79a0cb5930cd6e63eb5674ab9c2a91a3ef15`, run [42647921772](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42647921772). Python 3.11/3.12/3.13 each passed Ruff, 136 tests, Alembic round-trip and SQLite foreign_key_check. Manual browser review remains separate.
 
 
-Phase 6 automated evidence (follow-up branch, not yet integrated into main):
+Phase 6 post-merge automated evidence:
 - PR #10 head \`e016434ce5a1fe0cf447f184cee1701e532bbd67\`.
 - GitHub Actions run [42647719755](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42647719755) passed Python 3.11/3.12/3.13: Ruff, 136 tests per version, Alembic round-trip and SQLite foreign_key_check.
-- The earlier Phase 6 merge commit has a failing first matrix run; PR #10 contains the corresponding CI/UI expectation correction. Do not consider the merged main branch fully green until PR #10 is integrated and a post-merge CI run passes.
+- PR #8 introduced the Phase 6 export/history implementation; the follow-up PR #10 corrected the UI heading and test expectations. Both are integrated. Post-merge main CI run [42647921772](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42647921772) passed all matrix jobs.
 - Manual browser visual validation and independent security review remain outstanding.

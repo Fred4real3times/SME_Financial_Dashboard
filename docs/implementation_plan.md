@@ -19,7 +19,7 @@ Category CRUD, deterministic rules/conflict handling, manual correction and befo
 ## Phase 5 — Dashboard [COMPLETE — automated CI; manual browser smoke test outstanding]
 Canonical filters; inflow/outflow/net; conditional balances; monthly charts, top spend/counterparties and period comparison; independent Decimal reconciliation. Exit AC-04.
 
-## Phase 6 — Exports and history [AUTOMATED TESTS PASS ON FOLLOW-UP PR; MAIN FIX PENDING]
+## Phase 6 — Exports and history [AUTOMATED TESTS PASS ON MAIN]
 CSV/PDF from the same company-scoped DashboardFilters; CSV formula-injection defense; import-batch/row history; company audit history; export history/audit events; bounded export size and pagination. Exit AC-05 after backend and UI tests.
 
 ## Phase 7 — Synthetic data and QA
@@ -157,7 +157,7 @@ Automated evidence: commit \`62eb759f2c5c480a7b7385d6939d1d7377bc398e\`, PR #6 C
 - VIEWER may export and inspect import history, but cannot inspect the audit log. No schema migration is required.
 
 ## Phase 6 remaining validation
-Automated tests cover CSV formula injection, dashboard filter reuse, tenant isolation, viewer export permission, row limits, valid PDF generation/content, batch/row provenance, audit pagination and authorization. CI run `42647719755` on PR #10 commit `e016434ce5a1fe0cf447f184cee1701e532bbd67` passed Ruff, 136 tests, Alembic round-trip and SQLite foreign_key_check on Python 3.11/3.12/3.13. This evidence is for the follow-up branch; PR #10 must be merged before the corrections are part of `main`. Manual browser visual validation and independent security review remain outstanding.
+Automated tests cover CSV formula injection, dashboard filter reuse, tenant isolation, viewer export permission, row limits, valid PDF generation/content, batch/row provenance, audit pagination and authorization. Post-merge CI run `42647921772` on main commit `bead79a0cb5930cd6e63eb5674ab9c2a91a3ef15` passed Ruff, 136 tests, Alembic round-trip and SQLite foreign_key_check on Python 3.11/3.12/3.13. Manual browser visual validation and independent security review remain outstanding.
 
 
 ## Phase 6 CI follow-up — 2026-11-09
