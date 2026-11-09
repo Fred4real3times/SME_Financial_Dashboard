@@ -1,0 +1,28 @@
+# User Flows — SME Financial Dashboard
+**Status:** DRAFT
+
+## Roles
+ADMIN manages workspace/company/members and all finance functions. ACCOUNTANT imports, manages categories/rules, corrects transactions, views and exports. VIEWER reads dashboard/transactions and exports. Permissions are checked in services, not only hidden in UI.
+
+## Flow 1 — Workspace and company
+Authenticate/local first-run admin setup → create workspace/company → set timezone and display currency → grant membership/role → select authorized company. Reject duplicate/invalid names and unauthorized company IDs. Audit administrative changes.
+
+## Flow 2 — Import and map
+Select company → upload CSV/XLSX → enforce file type/size/content limits → preview bounded sample without DB writes → select worksheet if XLSX → map date, amount, currency and direction (or explicitly configure signed amount) → configure date and decimal separators → validate rows → classify blank/invalid/duplicate/valid/outlier-warning → review → confirm → atomically persist batch, rows, accepted transactions and audit event → show imported/ignored/rejected/warning counts.
+
+Failures: unsupported/oversized/corrupt file, missing mappings, ambiguous parsing, all rows invalid or DB failure. Failed commit rolls back.
+
+## Flow 3 — Categorize and correct
+Apply active rules by descending priority. A unique highest-priority match assigns category and rule provenance. No match or tied top priority remains for review. Accountant changes category; service validates transaction/category company ownership; before/after change and actor are audited; dashboard recalculates.
+
+## Flow 4 — Dashboard
+Choose date range, currency, category and direction filters → show inflows, outflows, net flow, monthly trend, top expense categories/counterparties and comparison period. Closing balance shown only when a coherent opening snapshot exists for same company/account/currency. Distinguish zero from unavailable.
+
+## Flow 5 — Export
+CSV/PDF uses same canonical filter contract and authorized company context. Include company, period, currency, generated timestamp and demo label. Escape formula-leading CSV cells. Audit export metadata, not full financial payloads.
+
+## Flow 6 — History and audit
+Company-scoped import batches, row issues and audit events; show file checksum, mapping, counts, status, actor and timestamp. Never expose another company's data.
+
+## Invariants
+Company context comes from authenticated membership; UI/session company IDs are untrusted. All reads, writes, dashboards, histories and exports are tenant-scoped. Corrections preserve original source provenance.
