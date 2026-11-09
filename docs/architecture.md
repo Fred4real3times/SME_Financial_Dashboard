@@ -159,3 +159,12 @@ Workspace service inputs now normalize invalid values into explicit WorkspaceErr
 - Export preparation is audit logged with only export metadata and selected filters; avoid copying full transaction payloads into AuditEvent.
 - Import history and audit history queries always scope by verified company context, with bounded pagination.
 - Audit events are visible only to roles with VIEW_AUDIT (ADMIN/ACCOUNTANT in MVP). VIEWER retains read/export and import-history access but not audit-log access.
+
+
+## Synthetic QA data and SQLite backup/restore
+- Synthetic QA data is never generated into the configured production database. It requires explicit synthetic-only confirmation, a new filename containing \`synthetic\` or \`demo\`, and refuses to run when \`APP_ENV=production\`.
+- Three fictional profiles are created through the same authorization, company, category, import preview and partial-commit services as normal app workflows. Staged INVALID, DUPLICATE and REVIEW rows remain unlinked to Transaction.
+- SQLite backups use the database online backup API rather than copying a live database file. Validate \`PRAGMA integrity_check\`, \`PRAGMA foreign_key_check\` and required application tables before publication and after restore.
+- Build the backup in the destination directory, then atomically publish it. Do not overwrite an existing backup/restore target without an explicit CLI flag. Include SHA-256 in the operation report.
+- Backup files contain confidential local authentication and financial data. The helper sets restrictive file permissions where supported but does not provide encryption; operators must protect/encrypt the destination.
+- Stop Streamlit before replacing its live database; verify the restored workspace after restart.

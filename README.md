@@ -117,3 +117,28 @@ The Phase 6 branch adds filtered CSV/PDF export, spreadsheet-formula neutralizat
 
 ### Phase 6 automated verification — integrated into main
 Follow-up PR #10 [fixes the Streamlit history headings and CI/test expectations](https://github.com/Fred4real3times/SME_Financial_Dashboard/pull/10) and is merged. Main commit \`bead79a0cb5930cd6e63eb5674ab9c2a91a3ef15\` passed post-merge GitHub Actions run [42647921772](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42647921772): 136 tests per Python 3.11/3.12/3.13 matrix job, Ruff, Alembic round-trip and SQLite foreign_key_check. Manual browser visual testing and independent external security review remain open.
+
+### Phase 7 — Synthetic QA dataset
+Create a separate fictional SQLite demo database (never overwrite an existing database):
+
+\`\`\`powershell
+python scripts/generate_synthetic_data.py --confirm-synthetic-only
+\`\`\`
+
+The script prompts for a synthetic ADMIN password and creates three SMEs (retail, services, manufacturing) with 12 months of XAF activity and quarterly USD bank-fee rows. Each company has 100 valid transactions plus one INVALID, one DUPLICATE and two reference-less REVIEW rows. Only VALID rows are committed; held rows remain in import history. The default output is \`.data/sme_financial_dashboard_synthetic.db\`.
+
+### SQLite backup and restore
+
+\`\`\`powershell
+python scripts/sqlite_backup_restore.py backup --source .data/sme_financial_dashboard_synthetic.db --destination .data/backups/sme-synthetic-backup.db
+python scripts/sqlite_backup_restore.py restore --backup .data/backups/sme-synthetic-backup.db --destination .data/sme_financial_dashboard_synthetic.db --replace-existing
+\`\`\`
+
+Restore only after stopping Streamlit. The command verifies SQLite integrity and foreign keys and prints a SHA-256 checksum. Backups contain confidential financial and authentication data; the utility does not encrypt them. Store them on protected/encrypted storage.
+
+
+### Phase 7 verification — automated feature-branch evidence
+The Phase 7 synthetic dataset and SQLite backup/restore work on branch \`feat/phase-7-qa-tooling\`, head \`4687979753a7f6f4f444f2b541eac965a6d3cd2c\`, passed GitHub Actions run [42651239061](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42651239061): Ruff, 142 tests per Python 3.11/3.12/3.13 job, Alembic round-trip and SQLite foreign_key_check. Per SME profile, 100 valid transactions are committed and the 4 noisy rows remain held (1 INVALID, 1 DUPLICATE, 2 REVIEW). This is feature-branch evidence pending review/merge. The interactive CLI has not been run manually; browser visual QA and independent external security review remain open.
+
+
+The Phase 7 CI run above validates the pre-rebase feature-branch head. The rebased branch must pass CI again before merge consideration.

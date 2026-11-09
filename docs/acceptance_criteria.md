@@ -167,3 +167,24 @@ Phase 6 post-merge automated evidence:
 - GitHub Actions run [42647719755](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42647719755) passed Python 3.11/3.12/3.13: Ruff, 136 tests per version, Alembic round-trip and SQLite foreign_key_check.
 - PR #8 introduced the Phase 6 export/history implementation; the follow-up PR #10 corrected the UI heading and test expectations. Both are integrated. Post-merge main CI run [42647921772](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42647921772) passed all matrix jobs.
 - Manual browser visual validation and independent security review remain outstanding.
+
+## Phase 7 synthetic data and QA acceptance criteria — automated PASS on feature branch
+- SYN-01 PASS — integration test confirms exactly three demo-only profiles share one generated workspace.
+- SYN-02 PASS — per-company test confirms 100 committed rows over 12 months, XAF/USD partitions and four quarterly USD rows without conversion.
+- SYN-03 PASS — exact per-company classification (100 VALID, 1 INVALID, 1 DUPLICATE, 2 REVIEW); only valid rows are linked to transactions.
+- SYN-04 PASS — test verifies company categories are assigned by real rules and two separate verified currency snapshots per company.
+- BAK-01 PASS — backup/restore integration tests validate integrity_check, foreign_key_check and required tables.
+- BAK-02 PASS — test verifies checksum, consistent backup, and refuses overwrite unless the explicit flag is set.
+- BAK-03 PASS — test verifies restore validation, refuses replacement by default, and preserves source backup when target replacement is explicitly confirmed.
+- QA-01 PASS — CI run `42651239061`: Ruff, 142 tests, Alembic round-trip and foreign_key_check on Python 3.11/3.12/3.13.
+- QA-02 PASS — deterministic synthetic-data integration test verifies counts, quarantine, categories, currency separation and snapshots.
+- QA-03 BLOCKED — manual browser visual QA and independent external security review have not been performed; no claim of completion.
+
+
+Phase 7 automated evidence (feature branch; not yet integrated into main):
+- Branch head \`4687979753a7f6f4f444f2b541eac965a6d3cd2c\`.
+- GitHub Actions run [42651239061](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42651239061) passed on Python 3.11/3.12/3.13: 142 tests per matrix job, Ruff, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign_key_check.
+- Manual execution of the interactive CLI, browser visual QA and independent external security review remain separate release gates.
+
+
+- **Rebased PR head:** automated CI must be rerun against the new rebased commit before merge; prior feature-branch CI is not treated as evidence for the rebased commit.

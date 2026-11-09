@@ -22,8 +22,8 @@ Canonical filters; inflow/outflow/net; conditional balances; monthly charts, top
 ## Phase 6 — Exports and history [AUTOMATED TESTS PASS ON MAIN]
 CSV/PDF from the same company-scoped DashboardFilters; CSV formula-injection defense; import-batch/row history; company audit history; export history/audit events; bounded export size and pagination. Exit AC-05 after backend and UI tests.
 
-## Phase 7 — Synthetic data and QA
-Generate 12 months for three SME profiles with deliberate noisy rows. Run unit/integration/workflow/security tests; backup/restore; independent QA report; fix in-scope P0/P1 and rerun. Exit AC-06 and all required tests.
+## Phase 7 — Synthetic data and backup/restore tooling [AUTOMATED TESTS PASS ON PRE-REBASE FEATURE BRANCH]
+Generate 12 months for three SME profiles through the production import workflow; validate counts, categorization, REVIEW quarantine and verified snapshots. Add verified SQLite backup/restore tooling with atomic publication, integrity checks and explicit overwrite controls. Run unit/integration/workflow/security regression tests; record independent QA report and limitations. External security review and manual browser QA remain separate release gates. Re-run CI after rebasing before merge. Exit AC-06 and all required automated tests.
 
 ## Phase 8 — Release
 Clean clone install on Windows/WSL; Docker optional; synthetic samples only; demo script; PASS/FAIL/BLOCKED evidence matrix; residual limitations.
@@ -168,3 +168,23 @@ The merged Phase 6 commit was followed by a matrix run that exposed a UI smoke a
 - PR #8 was merged at \`83505c16d5bc71cc194e06ce92ff8a871967a602\` while its first merged-head CI did not pass. A subsequent matrix run exposed UI heading expectation and test-fixture expectation defects; the follow-up PR #10 corrects them and removes Ruff UP012 in \`app.py\`.
 - Follow-up head \`e016434ce5a1fe0cf447f184cee1701e532bbd67\`, GitHub Actions run \`42647719755\`: Python 3.11, 3.12 and 3.13 all pass Ruff, 136 tests, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign_key_check.
 - This is automated branch evidence. The merged \`main\` remains at the earlier Phase 6 commit until follow-up PR #10 is merged.
+
+## Phase 7 implementation — 2026-11-09
+- Synthetic dataset service defines three fictional SME profiles: retail, professional services and light manufacturing; each covers 12 calendar months in XAF with quarterly USD bank fees.
+- Each company imports 100 valid rows plus four intentional noisy rows: one existing-reference duplicate within the file, one invalid amount and two identical reference-less rows that must remain REVIEW.
+- Expected per-company classification: 100 VALID, 1 INVALID, 1 DUPLICATE and 2 REVIEW; explicit partial confirmation imports only the 100 valid rows. Expected aggregate: 300 transactions across three companies and 312 staged source rows.
+- Each demo company receives deterministic categories/rules and verified opening snapshots for separate XAF and USD accounts. No currency conversion or cross-company aggregation is used.
+- \`scripts/generate_synthetic_data.py\` creates a separate, new SQLite file only; it requires \`--confirm-synthetic-only\`, refuses \`APP_ENV=production\`, requires a new filename containing \`synthetic\` or \`demo\`, refuses existing destinations and prompts for an ADMIN password (only a hash is stored).
+- \`scripts/sqlite_backup_restore.py\` uses SQLite's online backup API, verifies \`integrity_check\`, \`foreign_key_check\` and required SME tables, calculates SHA-256 and publishes a temporary copy atomically. Existing backup files are not overwritten unless \`--overwrite\` is passed. Restore requires \`--replace-existing\` to replace an existing target.
+- Backup files contain account/user/session information and password hashes; protect them as confidential data and encrypt the storage volume or backup destination. The utility does not encrypt backup contents itself.
+
+
+## Phase 7 automated implementation evidence — 2026-11-09
+- Synthetic data generator and service implemented for retail, professional-services and light-manufacturing SMEs. Per company, the preview must classify exactly 100 valid rows, one invalid amount, one referenced duplicate and two reference-less REVIEW rows; explicit partial confirmation imports only the 100 valid rows.
+- The integration test verifies three demo companies, 12 distinct transaction months per company, 300 total transactions, 312 staged source rows, category assignment, separate XAF/USD accounts and verified snapshots, held-row non-linkage and import audit.
+- SQLite backup/restore tests exercise the online backup API, integrity and foreign-key checks, required schema validation, SHA-256 evidence, no-overwrite default, explicit backup overwrite, explicit restore replacement, backup preservation and invalid-source rejection.
+- GitHub Actions run \`42651239061\` on branch head \`4687979753a7f6f4f444f2b541eac965a6d3cd2c\` passed Ruff, 142 tests, Alembic round-trip and SQLite foreign_key_check on Python 3.11, 3.12 and 3.13.
+- The evidence validates services and integration tests. Manual execution of the interactive generation CLI, browser visual QA and independent external security review remain separate validation tasks.
+
+
+Post-rebase CI is required on the new exact branch head before Phase 7 can be considered merge-ready.
