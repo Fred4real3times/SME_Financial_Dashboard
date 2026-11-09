@@ -133,7 +133,7 @@ class Company(Base, TimestampMixin):
     name: Mapped[str] = mapped_column(String(160), nullable=False)
     base_currency: Mapped[str] = mapped_column(String(3), nullable=False)
     timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="Africa/Douala")
-    is_demo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    is_demo: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     workspace: Mapped[Workspace] = relationship(back_populates="companies")
 
 
