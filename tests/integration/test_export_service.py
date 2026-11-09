@@ -165,7 +165,7 @@ def test_csv_export_matches_company_filters_and_neutralizes_formula_cells(sessio
     assert records[0][0:5] == [
         "Transaction date", "Value date", "Amount", "Currency", "Direction"
     ]
-    assert records[1][2:5] == ["25.50", "XAF", "OUTFLOW"]
+    assert records[1][2:5] == ["25.500000", "XAF", "OUTFLOW"]
     assert records[1][6] == "Supplies"
     assert records[1][7].startswith("'=")
     assert records[1][8].startswith("'@")
@@ -266,6 +266,13 @@ def test_export_rejects_more_than_configured_row_limit(session, monkeypatch):
     _workspace, _user, company, context = _context(session, suffix="export-limit")
     import sme_financial_dashboard.services.reporting_service as reporting
 
+    _transaction(
+        session,
+        company,
+        label="export-over-limit",
+        transaction_date=date(2026, 1, 10),
+        amount="10.00",
+    )
     monkeypatch.setattr(reporting, "MAX_EXPORT_ROWS", 0)
     with pytest.raises(ReportingError, match="safety limit"):
         ExportService.export_csv(session, context, _filters())
