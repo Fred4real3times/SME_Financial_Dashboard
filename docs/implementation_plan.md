@@ -33,3 +33,7 @@ Product: product_scope.md, user_flows.md and acceptance wording. Architecture/Da
 
 ## Phase report
 Record files changed, exact commands run, exact test results, acceptance IDs/status, limitations/risks and next phase. Never claim an unexecuted test or integration passed.
+
+
+## Decision addendum — 2026-11-09
+Update Phase 0 contract freeze to include: soft-delete lifecycle and restore policy; REVIEW queue and partial-commit semantics; workspace membership role scope and cross-company authorization. Add schema migration and tests for these decisions before import/dashboard implementation. Do not begin application code until owner explicitly approves the revised architecture.md and data_dictionary.md, including the remaining decisions.
