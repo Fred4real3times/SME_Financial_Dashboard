@@ -316,3 +316,47 @@ def test_review_resolution_rejects_forged_company_context(session):
             decision=ReviewDecision.REJECTED,
             note="This forged context must be denied.",
         )
+
+
+
+def test_reference_less_row_reimport_after_manual_acceptance_returns_to_review(session):
+    _workspace, _user, _company, context = _context(session, suffix="reimport-manual-review")
+    first_preview = _review_preview(session, context)
+    first_row = session.scalar(
+        select(ImportRow)
+        .where(ImportRow.import_batch_id == first_preview.preview_id)
+        .order_by(ImportRow.source_row_number)
+    )
+    original_fingerprint = first_row.source_fingerprint
+    ReviewService.resolve(
+        session,
+        context,
+        row_id=first_row.id,
+        decision=ReviewDecision.CORRECTED_AND_ACCEPTED,
+        note="Verified separately and assigned a unique manual reference.",
+        corrected_values=_corrected_values("MANUAL-REIMPORT-001"),
+    )
+    session.flush()
+    session.refresh(first_row)
+    assert first_row.source_fingerprint == original_fingerprint
+    assert first_row.review_decision is ReviewDecision.CORRECTED_AND_ACCEPTED
+
+    content = (
+        "Date;Amount;Currency;Direction;Reference;Counterparty\n"
+        "01/01/2026;100,00;XAF;CREDIT;;Client\n"
+        "01/01/2026;100,00;XAF;CREDIT;;Client\n"
+    ).encode()
+    second_preview = ImportService.preview(
+        session,
+        file_bytes=content,
+        file_name="ambiguous-reimport.csv",
+        mapping=_mapping(),
+        context=context,
+    )
+    assert second_preview.valid_count == 0
+    assert second_preview.review_count == 2
+    assert any(
+        issue["code"] == "REFERENCELESS_MATCH_MANUAL_OVERRIDE"
+        for row in second_preview.sample_rows
+        for issue in row.issues
+    )
