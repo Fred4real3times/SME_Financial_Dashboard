@@ -80,6 +80,6 @@ Sessions are opaque HMAC-SHA256 signed tokens held in Streamlit server-side sess
 
 
 ## Statement import (Phase 3)
-The import workflow accepts CSV, XLSX and digital/text-based PDF statements. Uploads are capped at 10 MiB; XLSX archive expansion at 50 MiB; PDF files at 100 pages; and extracted data at 10,000 rows. CSV delimiter/encoding, XLSX worksheet, date format, decimal and thousands separators and direction convention are explicitly selected. XLSX formula cells are rejected; macros are not run. Scanned/image-only or encrypted PDFs are unsupported (no OCR).
+The import workflow accepts CSV, XLSX and digital/text-based PDF statements. Uploads are capped at 10 MiB both in Streamlit and in the parser; XLSX archive expansion at 50 MiB; PDF files at 100 pages; and extracted data at 10,000 rows. CSV delimiter/encoding, XLSX worksheet, date format, decimal and thousands separators and direction convention are explicitly selected. XLSX formula cells are rejected; macros are not run. Scanned/image-only or encrypted PDFs are unsupported (no OCR).
 
 The preview stores sanitized staging rows only. No financial transaction is created until the user confirms the import. A separate partial-import confirmation is required when invalid, duplicate or REVIEW rows are present. Only valid rows are committed; ambiguous reference-less matches remain in REVIEW. Imported amounts are Decimal, positive, and never automatically converted between currencies.

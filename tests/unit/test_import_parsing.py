@@ -7,7 +7,11 @@ from openpyxl import Workbook
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 
-from sme_financial_dashboard.domain.import_parsing import ImportFileError, inspect_statement
+from sme_financial_dashboard.domain.import_parsing import (
+    MAX_UPLOAD_BYTES,
+    ImportFileError,
+    inspect_statement,
+)
 
 
 def _pdf_with_table() -> bytes:
@@ -109,3 +113,10 @@ def test_unsupported_or_malformed_files_have_stable_issue_codes(file_name, paylo
     with pytest.raises(ImportFileError) as error:
         inspect_statement(payload, file_name)
     assert error.value.code == code
+
+
+
+def test_parser_rejects_upload_above_ten_mib_limit():
+    with pytest.raises(ImportFileError) as error:
+        inspect_statement(b"x" * (MAX_UPLOAD_BYTES + 1), "oversized.csv")
+    assert error.value.code == "FILE_TOO_LARGE"
