@@ -33,7 +33,6 @@ from sme_financial_dashboard.services.import_service import (
 )
 from sme_financial_dashboard.services.categorization_service import (
     CategorizationError,
-    CategorizationOutcome,
     CategorizationRuleService,
     CategorizationService,
     CategoryService,
@@ -606,6 +605,20 @@ if companies:
             all_categories = []
             rules = []
 
+    if all_categories:
+        st.dataframe(
+            [
+                {
+                    "Category": category.name,
+                    "Direction": category.kind.value,
+                    "Active": category.is_active,
+                }
+                for category in all_categories
+            ],
+            use_container_width=True,
+            hide_index=True,
+        )
+
     if workspace_context.role in {MembershipRole.ADMIN, MembershipRole.ACCOUNTANT}:
         with st.expander("Create a category", expanded=False):
             with st.form(f"create_category_{chosen}"):
@@ -747,7 +760,7 @@ if companies:
                     except PermissionError:
                         st.error("You are not authorized to manage rules in this company.")
 
-    if all_categories:
+    if all_categories and workspace_context.role in {MembershipRole.ADMIN, MembershipRole.ACCOUNTANT}:
         with session_factory() as db:
             uncategorized = list(
                 db.scalars(
@@ -875,20 +888,21 @@ if companies:
                         use_container_width=True,
                         hide_index=True,
                     )
+                decision = st.selectbox(
+                    "Decision",
+                    options=[
+                        ReviewDecision.CONFIRMED_DUPLICATE,
+                        ReviewDecision.REJECTED,
+                        ReviewDecision.CORRECTED_AND_ACCEPTED,
+                    ],
+                    format_func=lambda value: {
+                        ReviewDecision.CONFIRMED_DUPLICATE: "Confirm duplicate",
+                        ReviewDecision.REJECTED: "Reject row",
+                        ReviewDecision.CORRECTED_AND_ACCEPTED: "Correct and accept",
+                    }[value],
+                    key=f"review_decision_{selected_review.row_id}",
+                )
                 with st.form(f"resolve_review_{selected_review.row_id}"):
-                    decision = st.selectbox(
-                        "Decision",
-                        options=[
-                            ReviewDecision.CONFIRMED_DUPLICATE,
-                            ReviewDecision.REJECTED,
-                            ReviewDecision.CORRECTED_AND_ACCEPTED,
-                        ],
-                        format_func=lambda value: {
-                            ReviewDecision.CONFIRMED_DUPLICATE: "Confirm duplicate",
-                            ReviewDecision.REJECTED: "Reject row",
-                            ReviewDecision.CORRECTED_AND_ACCEPTED: "Correct and accept",
-                        }[value],
-                    )
                     review_note = st.text_area("Review note (required)", max_chars=500)
                     correction = {}
                     if decision is ReviewDecision.CORRECTED_AND_ACCEPTED:
