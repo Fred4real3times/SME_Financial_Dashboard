@@ -295,6 +295,10 @@ class ReviewService:
         corrected: dict[str, Any] | None = None
         fingerprint: str | None = None
         if review_decision is ReviewDecision.CORRECTED_AND_ACCEPTED:
+            if row.source_fingerprint is None:
+                raise ReviewResolutionError(
+                    "Original source fingerprint is missing; corrected acceptance is blocked to prevent unsafe re-import."
+                )
             if not isinstance(corrected_values, dict):
                 raise ReviewResolutionError("Corrected transaction values are required.")
             corrected, fingerprint = _corrected_transaction_values(
