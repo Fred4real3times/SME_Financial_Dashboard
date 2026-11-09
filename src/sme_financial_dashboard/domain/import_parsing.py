@@ -18,6 +18,9 @@ MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 MAX_XLSX_EXPANDED_BYTES = 50 * 1024 * 1024
 MAX_XLSX_ARCHIVE_ENTRIES = 1_000
 MAX_PDF_PAGES = 100
+MAX_PDF_PAGE_CHARACTERS = 250_000
+MAX_PDF_TOTAL_CHARACTERS = 5_000_000
+MAX_PDF_TABLES_PER_PAGE = 50
 MAX_IMPORT_ROWS = 10_000
 MAX_IMPORT_COLUMNS = 100
 PREVIEW_SAMPLE_ROWS = 20
@@ -283,13 +286,35 @@ def inspect_statement(
             text_seen = False
             table_seen = False
             row_counter = 0
+            total_extracted_characters = 0
+            extracted_page_texts: list[str] = []
             for page_number, page in enumerate(pdf.pages, start=1):
                 page_text = page.extract_text() or ""
+                if len(page_text) > MAX_PDF_PAGE_CHARACTERS:
+                    raise ImportFileError(
+                        "PDF_PAGE_TEXT_LIMIT_EXCEEDED",
+                        f"PDF page {page_number} exceeds the extracted-text character limit.",
+                    )
                 text_seen = text_seen or bool(page_text.strip())
+                extracted_page_texts.append(page_text)
                 tables = page.extract_tables() or []
+                if len(tables) > MAX_PDF_TABLES_PER_PAGE:
+                    raise ImportFileError(
+                        "PDF_TABLE_LIMIT_EXCEEDED",
+                        f"PDF page {page_number} contains too many detected tables.",
+                    )
+                page_table_characters = 0
                 for table_index, table in enumerate(tables, start=1):
                     cleaned = [tuple(_cell_text(v) for v in row) for row in table if row]
                     cleaned = [row for row in cleaned if any(value for value in row)]
+                    page_table_characters += sum(
+                        len(value) for row in cleaned for value in row
+                    )
+                    if page_table_characters > MAX_PDF_PAGE_CHARACTERS:
+                        raise ImportFileError(
+                            "PDF_PAGE_TEXT_LIMIT_EXCEEDED",
+                            f"PDF page {page_number} exceeds the extracted-text character limit.",
+                        )
                     if not cleaned:
                         continue
                     table_seen = True
@@ -312,10 +337,13 @@ def inspect_statement(
                         if len(rows) >= MAX_IMPORT_ROWS:
                             raise ImportFileError("ROW_LIMIT_EXCEEDED", "PDF exceeds the 10,000-row limit.")
                         row_counter += 1
-                        padded = tuple(values[: len(headers)]) + tuple(
-                            "" for _ in range(max(0, len(headers) - len(values)))
-                        )
-                        rows.append(ParsedRow(row_counter, padded, page_number, table_index))
+                        rows.append(ParsedRow(row_counter, values, page_number, table_index))
+                total_extracted_characters += max(len(page_text), page_table_characters)
+                if total_extracted_characters > MAX_PDF_TOTAL_CHARACTERS:
+                    raise ImportFileError(
+                        "PDF_TOTAL_TEXT_LIMIT_EXCEEDED",
+                        "PDF exceeds the total extracted-text character limit.",
+                    )
             if table_seen and headers is not None and rows:
                 return ParsedDocument("PDF", "PDF_TABLE", headers, tuple(rows), len(pdf.pages))
 
@@ -325,9 +353,9 @@ def inspect_statement(
                     "This PDF has no extractable text layer. Scanned/image-only PDFs are unsupported in the MVP.",
                 )
             text_rows: list[tuple[int, tuple[str, ...]]] = []
-            for page_number, page in enumerate(pdf.pages, start=1):
-                for line in (page.extract_text() or "").splitlines():
-                    columns = tuple(part.strip() for part in re.split(r"\s{2,}", line.strip()) if part.strip())
+            for page_number, page_text in enumerate(extracted_page_texts, start=1):
+                for line in page_text.splitlines():
+                    columns = tuple(part.strip() for part in re.split(r"\\s{2,}", line.strip()) if part.strip())
                     if len(columns) >= 2:
                         text_rows.append((page_number, columns))
             if len(text_rows) < 2:
@@ -346,10 +374,7 @@ def inspect_statement(
                         "PDF text rows do not have a consistent number of columns.",
                     )
                 row_counter += 1
-                padded = tuple(values[: len(headers)]) + tuple(
-                    "" for _ in range(max(0, len(headers) - len(values)))
-                )
-                rows.append(ParsedRow(row_counter, padded, page_number, None))
+                rows.append(ParsedRow(row_counter, values, page_number, None))
             return ParsedDocument("PDF", "PDF_TEXT", headers, tuple(rows), len(pdf.pages))
     except ImportFileError:
         raise

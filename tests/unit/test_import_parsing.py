@@ -12,7 +12,9 @@ from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 from sme_financial_dashboard.domain.import_parsing import (
     MAX_IMPORT_COLUMNS,
     MAX_IMPORT_ROWS,
+    MAX_PDF_PAGE_CHARACTERS,
     MAX_PDF_PAGES,
+    MAX_PDF_TOTAL_CHARACTERS,
     MAX_UPLOAD_BYTES,
     MAX_XLSX_ARCHIVE_ENTRIES,
     ImportFileError,
@@ -234,3 +236,61 @@ def test_pdf_table_rejects_rows_with_missing_columns(monkeypatch):
     with pytest.raises(ImportFileError) as error:
         inspect_statement(b"%PDF-1.7\nplaceholder", "broken-table.pdf")
     assert error.value.code == "PDF_TABLE_LAYOUT_AMBIGUOUS"
+
+
+
+def test_pdf_page_character_limit_is_enforced(monkeypatch):
+    class FakePage:
+        def extract_text(self):
+            return "x" * (MAX_PDF_PAGE_CHARACTERS + 1)
+
+        def extract_tables(self):
+            return []
+
+    class FakePdf:
+        pages = [FakePage()]
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(
+        "sme_financial_dashboard.domain.import_parsing.pdfplumber.open",
+        lambda *_args, **_kwargs: FakePdf(),
+    )
+    with pytest.raises(ImportFileError) as error:
+        inspect_statement(b"%PDF-1.7\nplaceholder", "oversized-page.pdf")
+    assert error.value.code == "PDF_PAGE_TEXT_LIMIT_EXCEEDED"
+
+
+def test_pdf_total_character_limit_is_enforced(monkeypatch):
+    class FakePage:
+        def extract_text(self):
+            return "x" * MAX_PDF_PAGE_CHARACTERS
+
+        def extract_tables(self):
+            return []
+
+    class FakePdf:
+        pages = [
+            FakePage()
+            for _ in range(
+                MAX_PDF_TOTAL_CHARACTERS // MAX_PDF_PAGE_CHARACTERS + 1
+            )
+        ]
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(
+        "sme_financial_dashboard.domain.import_parsing.pdfplumber.open",
+        lambda *_args, **_kwargs: FakePdf(),
+    )
+    with pytest.raises(ImportFileError) as error:
+        inspect_statement(b"%PDF-1.7\nplaceholder", "oversized-document.pdf")
+    assert error.value.code == "PDF_TOTAL_TEXT_LIMIT_EXCEEDED"
