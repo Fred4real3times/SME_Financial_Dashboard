@@ -26,3 +26,7 @@ Company-scoped import batches, row issues and audit events; show file checksum, 
 
 ## Invariants
 Company context comes from authenticated membership; UI/session company IDs are untrusted. All reads, writes, dashboards, histories and exports are tenant-scoped. Corrections preserve original source provenance.
+
+
+## Decision addendum — 2026-11-09
+Ambiguous rows enter a review queue with reason codes and retained source row; no automatic acceptance. Confirmed unambiguous rows may be committed only through an explicitly previewed partial import, while ambiguous rows remain staged. Soft-deleted transactions disappear from normal lists and KPI/export totals but remain available in authorized history with actor/time/reason and full provenance. Workspace membership allows access to multiple companies; company selection is limited to companies in that workspace and all services enforce scope.
