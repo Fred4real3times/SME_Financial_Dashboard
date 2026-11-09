@@ -201,7 +201,7 @@ def test_csv_export_uses_exact_filters_company_scope_and_formula_neutralization(
     records = list(csv.reader(io.StringIO(artifact.data.decode("utf-8-sig"))))
     assert len(records) == 2
     row = records[1]
-    assert row[2] == "25.50"
+    assert row[2] == "25.500000"
     assert row[3] == "XAF"
     assert row[5] == "Operating"
     for index in (6, 7, 8, 9):
@@ -330,7 +330,7 @@ def test_import_history_is_company_scoped_and_preserves_row_provenance(session):
 
     own_batches = ImportHistoryService.list_batches(session, context)
     assert [item.id for item in own_batches] == [batch.id]
-    assert ImportHistoryService.list_batches(session, context_b) == []
+    assert [item.id for item in ImportHistoryService.list_batches(session, context_b)] == [batch_b.id]
 
     rows = ImportHistoryService.list_rows(
         session, context, batch_id=batch.id

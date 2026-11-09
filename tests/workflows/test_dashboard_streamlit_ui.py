@@ -150,7 +150,11 @@ def test_streamlit_dashboard_renders_verified_closing_balance(
 
         assert not app.exception, [element.message for element in app.exception]
         assert any(element.value == "Financial dashboard" for element in app.subheader)
-        assert any(element.value == "Import history" for element in app.subheader)
+        assert any(element.value == "Exports and history" for element in app.subheader)
+        assert any("Import history" in element.value for element in app.markdown)
+        assert any("Audit history" in element.value for element in app.markdown)
+        assert any(element.label == "Prepare filtered CSV" for element in app.button)
+        assert any(element.label == "Prepare filtered PDF" for element in app.button)
         assert any(element.value == "Audit trail" for element in app.subheader)
         assert any(button.label == "Prepare filtered CSV" for button in app.button)
         assert any(button.label == "Prepare filtered PDF" for button in app.button)
