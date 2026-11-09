@@ -1,5 +1,5 @@
 # Implementation Plan — SME Financial Dashboard
-**Status:** DRAFT — implementation starts only after architecture and data dictionary approval.
+**Status:** APPROVED TO START DEVELOPMENT — owner approval of architecture.md and data_dictionary.md recorded 2026-11-09.
 
 ## Phase 0 — Baseline and contracts
 Preserve existing files; initial repo contains README.md only. Review product scope, flows, architecture, dictionary, threat model and acceptance criteria. Resolve open decisions; freeze service contracts/schema. Exit: owner explicitly approves architecture.md and data_dictionary.md.
@@ -11,7 +11,7 @@ Create Python metadata, pinned dependencies, config and .env.example. Implement 
 Local authentication/password hashing, first-run admin bootstrap, workspace/company/membership/roles and authorized company selector. Test roles and tenant boundaries.
 
 ## Phase 3 — Import vertical
-CSV/XLSX template and mapping UI; preview; explicit parse settings; validation/classification; atomic batch/rows/transactions/audit commit; repeat import and rollback tests. Exit AC-01/02.
+CSV/XLSX/PDF template and mapping UI; PDF text/table extraction adapter with page provenance and scanned-PDF detection; preview; explicit parse settings; validation/classification including REVIEW; explicitly confirmed partial import; atomic batch/rows/transactions/audit commit; repeat import and rollback tests. Exit AC-01/02 and PDF-01..08.
 
 ## Phase 4 — Categorization and audit
 Category CRUD, deterministic rules/conflict handling, manual correction and before/after audit; KPI refresh test. Exit AC-03.
@@ -40,3 +40,6 @@ Update Phase 0 contract freeze to include: soft-delete lifecycle and restore pol
 
 ## Final owner decisions — 2026-11-09
 Phase 0 contract freeze now records: workspace-wide uniform role; ADMIN/ACCOUNTANT soft-delete and ADMIN-only restore; mandatory deletion reason/audit; explicitly confirmed partial import with REVIEW quarantine; identical unreferenced rows sent to REVIEW; one primary category per transaction. Update architecture and schema/migrations/tests to these contracts only after owner approval of architecture.md and data_dictionary.md. No application-code development before that approval.
+
+## Approved PDF implementation scope — 2026-11-09
+Implement text-based/digital PDF statement ingestion with pdfplumber, page/table/row provenance, bounded preview, manual mapping, Decimal/locale validation and mandatory confirmation. Scanned/image-only PDFs, OCR, password-protected PDFs and embedded-file extraction are excluded from MVP. Unsupported or ambiguous PDF layouts must fail safely or enter REVIEW; they must not create guessed transactions.
