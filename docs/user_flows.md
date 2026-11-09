@@ -30,3 +30,6 @@ Company context comes from authenticated membership; UI/session company IDs are 
 
 ## Decision addendum — 2026-11-09
 Ambiguous rows enter a review queue with reason codes and retained source row; no automatic acceptance. Confirmed unambiguous rows may be committed only through an explicitly previewed partial import, while ambiguous rows remain staged. Soft-deleted transactions disappear from normal lists and KPI/export totals but remain available in authorized history with actor/time/reason and full provenance. Workspace membership allows access to multiple companies; company selection is limited to companies in that workspace and all services enforce scope.
+
+## Final owner decisions — 2026-11-09
+Workspace membership carries one role uniformly across all companies in that workspace. ADMIN and ACCOUNTANT may soft-delete transactions with a reason; only ADMIN may restore. Partial import is allowed after explicit confirmation: valid rows commit while REVIEW rows remain staged and excluded from KPIs. Identical transactions without a distinguishing reference enter REVIEW. Each transaction has at most one primary category.
