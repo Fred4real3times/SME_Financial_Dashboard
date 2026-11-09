@@ -1,5 +1,5 @@
 # Data Dictionary — SME Financial Dashboard
-**Status: DRAFT / NOT APPROVED. Align schema with architecture.md before implementation.**
+**Status: APPROVED FOR DEVELOPMENT — owner approval recorded 2026-11-09 after inclusion of PDF import metadata.**
 UUID primary keys; UTC timestamps; SQL NUMERIC/Python Decimal; company-scoped financial records.
 
 ## Shared conventions
@@ -10,8 +10,8 @@ Currency uppercase ISO 4217 alpha-3; no implicit conversion. amount is positive 
 **Company:** id, workspace_id FK, name(160), base_currency(3; display preference only), timezone IANA, is_demo, timestamps.
 **User:** id, normalized unique email, password_hash, display_name, is_active, timestamps.
 **WorkspaceMembership:** id, workspace_id FK, user_id FK, role ADMIN/ACCOUNTANT/VIEWER, created_at; unique(workspace_id,user_id).
-**ImportBatch:** id, company_id, uploaded_by_user_id, sanitized file_name, file_sha256, file_type CSV/XLSX, versioned mapping_json, status PREVIEWED/COMMITTED/FAILED/CANCELLED, total/blank/valid/invalid/duplicate/outlier counts, created_at, committed_at; optional company+file hash idempotency.
-**ImportRow:** id, company_id, import_batch_id, source_row_number, sanitized raw_values_json, normalized_values_json nullable, row_status BLANK/INVALID/VALID/DUPLICATE/VALID_WITH_WARNING, issues_json, source_fingerprint, transaction_id nullable; unique(batch_id,row_number).
+**ImportBatch:** id, company_id, uploaded_by_user_id, sanitized file_name, file_sha256, file_type CSV/XLSX/PDF, extraction_method CSV_ROWS/XLSX_SHEET/PDF_TABLE/PDF_TEXT, source_page_count nullable, parser_version nullable, versioned mapping_json, status PREVIEWED/PARTIALLY_COMMITTED/COMMITTED/FAILED/CANCELLED, total/blank/valid/invalid/duplicate/review/outlier counts, created_at, committed_at; optional company+file hash idempotency.
+**ImportRow:** id, company_id, import_batch_id, source_row_number (unique within batch), source_page_number nullable, source_table_index nullable, sanitized raw_values_json, normalized_values_json nullable, row_status BLANK/INVALID/VALID/DUPLICATE/VALID_WITH_WARNING/REVIEW, issues_json, source_fingerprint nullable, transaction_id nullable, reviewed_by_user_id nullable, reviewed_at nullable, review_decision nullable (ACCEPTED/REJECTED/CONFIRMED_DUPLICATE/CORRECTED_AND_ACCEPTED), resolution_note nullable; unique(batch_id,row_number).
 **Category:** id, company_id, name(80), normalized_name unique per company, kind INFLOW/OUTFLOW/BOTH, is_active, timestamps.
 **CategorizationRule:** id, company_id, category_id (same-company FK), match_field KEYWORD/COUNTERPARTY/REFERENCE, operator CONTAINS/EQUALS/STARTS_WITH, match_value(200), priority, is_active, timestamps.
 **Transaction:** id, company_id, import_batch_id, import_row_id, transaction_date, optional value_date, amount NUMERIC(20,6), currency(3), direction, description(500), counterparty(200), reference(200), account_name(120), nullable category_id, categorization_source RULE/MANUAL/NONE, nullable categorization_rule_id, fingerprint_version, source_fingerprint, is_validated, timestamps; unique(company_id,fingerprint_version,source_fingerprint). Preserve source provenance after correction.
@@ -38,3 +38,7 @@ Accepted schema implications: WorkspaceMembership is the access anchor for multi
 - ImportRow must support REVIEW state and resolution metadata. Partial import is explicit opt-in at confirmation: VALID rows are committed atomically; REVIEW rows remain staged without Transaction linkage until resolved. Invalid and duplicate rows are not imported.
 - Identical normalized business rows without a unique reference are REVIEW, not auto-deduplicated.
 - Transaction.category_id is a single nullable primary category FK. No split-category/allocation table in MVP.
+
+
+## PDF import schema addendum — approved 2026-11-09
+ImportBatch.file_type includes PDF. extraction_method identifies PDF_TABLE or PDF_TEXT, and source_page_count/parser_version support traceability and diagnostics. ImportRow.source_page_number and source_table_index are nullable for CSV/XLSX and populated when applicable for PDF; source_row_number is a stable sequence within the batch. PDF-extracted cells/lines use the same sanitized raw_values_json pathway. REVIEW is a first-class row status; review decision metadata records reviewer, timestamp, decision and optional note. A REVIEW row has no Transaction link until accepted/corrected, validated and committed. No OCR artifact model is required in MVP. Transaction.category_id remains the only nullable primary category association; no allocation table is introduced.
