@@ -24,7 +24,6 @@ from sme_financial_dashboard.db.models import (
     ImportMethod,
     ImportRow,
     ImportRowStatus,
-    ReviewDecision,
     Transaction,
 )
 from sme_financial_dashboard.domain.fingerprints import (
@@ -141,6 +140,7 @@ class ImportPreview:
     preview_id: UUID
     file_name: str
     file_type: str
+    file_sha256: str
     extraction_method: str
     total_count: int
     blank_count: int
@@ -386,6 +386,7 @@ def _preview_from_batch(batch: ImportBatch) -> ImportPreview:
         preview_id=batch.id,
         file_name=batch.file_name,
         file_type=batch.file_type.value,
+        file_sha256=batch.file_sha256,
         extraction_method=batch.extraction_method.value,
         total_count=batch.total_count,
         blank_count=counts[ImportRowStatus.BLANK],

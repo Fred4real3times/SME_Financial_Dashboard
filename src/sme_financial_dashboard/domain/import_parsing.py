@@ -80,6 +80,35 @@ def _check_size(file_bytes: bytes) -> None:
         )
 
 
+
+def list_xlsx_worksheets(file_bytes: bytes) -> tuple[str, ...]:
+    """Return worksheet names after the same bounded ZIP checks as the XLSX parser."""
+    _check_size(file_bytes)
+    if not file_bytes.startswith(b"PK\\x03\\x04") or not zipfile.is_zipfile(io.BytesIO(file_bytes)):
+        raise ImportFileError("FILE_SIGNATURE_MISMATCH", "The file is not a valid XLSX ZIP container.")
+    try:
+        with zipfile.ZipFile(io.BytesIO(file_bytes)) as archive:
+            infos = archive.infolist()
+            if sum(item.file_size for item in infos) > MAX_XLSX_EXPANDED_BYTES:
+                raise ImportFileError("XLSX_EXPANSION_LIMIT", "Expanded workbook exceeds 50 MiB.")
+            if any(
+                item.compress_size > 0 and item.file_size / item.compress_size > 200
+                for item in infos
+            ):
+                raise ImportFileError("XLSX_COMPRESSION_RATIO", "Workbook compression ratio is unsafe.")
+        workbook = load_workbook(
+            io.BytesIO(file_bytes), read_only=True, data_only=False, keep_links=False
+        )
+    except ImportFileError:
+        raise
+    except Exception as exc:
+        raise ImportFileError("XLSX_MALFORMED", "XLSX workbook could not be opened safely.") from exc
+    try:
+        return tuple(workbook.sheetnames)
+    finally:
+        workbook.close()
+
+
 def inspect_statement(
     file_bytes: bytes,
     file_name: str,

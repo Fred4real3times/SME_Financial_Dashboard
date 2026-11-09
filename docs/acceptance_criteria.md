@@ -98,3 +98,15 @@ A green GitHub Actions run for the tested commit is required before a phase is r
 
 ## Phase 2 review note
 The first CI run identified Ruff findings (unused imports, an unused test variable and a forward-reference annotation). These were corrected in the follow-up commit. The lint profile was narrowed to correctness/security-adjacent rules rather than enforcing import layout and line-length style at this stage.
+
+
+## Phase 3 implementation tests — in progress
+- IMP-12 Upload extension and content signature must agree; malformed/oversized/archive-expansion and PDF page/row-limit input must fail with stable issue codes.
+- IMP-13 CSV encoding/delimiter, XLSX worksheet, date format and decimal/thousands separators are explicit; no locale inference.
+- IMP-14 XLSX formulas/macros are never executed; formula cells are rejected.
+- IMP-15 Preview stores staging metadata and source rows only; no Transaction exists before confirmation.
+- IMP-16 Confirmed partial commit links only VALID/VALID_WITH_WARNING rows to Transactions atomically; REVIEW, INVALID and DUPLICATE remain unlinked and excluded from transaction queries.
+- IMP-17 Referenced re-imports are strict duplicates; matching rows without a unique reference enter REVIEW.
+- IMP-18 PDF import retains page/table/row provenance; scanned/image-only, encrypted, malformed, unsupported and ambiguous PDFs fail safely.
+- IMP-19 Import preview and commit are authorized against a freshly resolved CompanyContext; VIEWER and cross-company contexts are denied.
+These criteria remain BLOCKED until the latest branch-head CI and workflow evidence pass.
