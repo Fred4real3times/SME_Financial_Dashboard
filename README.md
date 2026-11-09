@@ -77,3 +77,23 @@ Phase 2 adds first-run ADMIN bootstrap, Argon2id password hashing, HMAC-signed s
 6. Sign in. The ADMIN can create companies and manage members/roles from Workspace Management.
 
 Sessions are opaque HMAC-SHA256 signed tokens held in Streamlit server-side session state and backed by revocable database records. They expire after `SESSION_TTL_HOURS` (default 12 hours); logout revokes the current session. This is not an external SSO or persistent browser-cookie integration. In production, use a unique secret of at least 32 characters and protect the host/database.
+
+
+## Statement import (Phase 3)
+The import workflow accepts CSV, XLSX and digital/text-based PDF statements. Uploads are capped at 10 MiB both in Streamlit and in the parser; XLSX archives at 1,000 entries, 50 MiB expanded size and 200:1 compression ratio; PDF files at 100 pages, 50 tables per page, 250,000 extracted characters per page and 5,000,000 per document; and imports at 10,000 rows / 100 columns. CSV delimiter/encoding, XLSX worksheet, date format, decimal and thousands separators and direction convention are explicitly selected. XLSX formula cells are rejected; macros are not run. Scanned/image-only or encrypted PDFs are unsupported (no OCR).
+
+The preview stores sanitized staging rows only. No financial transaction is created until the user confirms the import. A separate partial-import confirmation is required when invalid, duplicate or REVIEW rows are present. Only valid rows are committed; ambiguous reference-less matches remain in REVIEW. Imported amounts are Decimal, positive, and never automatically converted between currencies.
+
+
+### Verification snapshot
+Phase 3 branch head 64e50231bf228e251fb529b20655b89eba62b6cf passed GitHub Actions run 42621129042 on Python 3.11, 3.12 and 3.13 (76 tests per version, Ruff and migration round-trip). The branch is delivered as draft PR #2 stacked on Phase 2; it is not merged into main. Manual browser smoke testing remains part of final QA.
+
+
+### Phase 3 QA hardening
+CSV rows are streamed; XLSX ZIP entry, expanded-size, compression-ratio and column limits are checked; PDF encryption, table widths, page/table/row/character bounds are checked. SQLite duplicate lookups are chunked and transaction commits batch inserts before linking staged source rows. The parser has no hard wall-clock CPU timeout and is intended for the local single-instance app only, not a public upload endpoint.
+
+
+## Categories, rules and manual import review (Phase 4)
+Transactions support one primary category. Rules match description keywords, counterparty or reference; higher numeric priority wins, while equal top-priority matches remain unclassified for manual attention. A manual category assignment is audited and is not overwritten by rules. Confirmed imports apply applicable rules in the same transaction as the import.
+
+Ambiguous import rows stay in the REVIEW queue until an ADMIN or ACCOUNTANT records a decision. A corrected acceptance requires a reviewer note and a unique manual reference. The original source fingerprint is retained so re-importing the same reference-less row returns to REVIEW rather than silently inserting it again.

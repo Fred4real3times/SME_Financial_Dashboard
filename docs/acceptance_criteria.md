@@ -89,7 +89,7 @@ Product acceptance IDs AC-01..AC-06, IMP, FIN, CAT, EXP, AUD, SEC, OPS and PDF r
 - WS-04 New user/member provision and role changes are audited; inactive membership loses access without physical deletion.
 - WS-05 The last active ADMIN cannot be demoted or deactivated.
 - WS-06 All workspace/company lists and company selection are membership-scoped and checked server-side.
-These criteria remain BLOCKED until CI/local test evidence for the Phase 2 branch is recorded.
+Phase 2 CI evidence: PASS on commit 1dd3367d85c3f320d2685ab38f9885a55a2c3635, run 42619664693. Python 3.11, 3.12 and 3.13 each passed Ruff, 54 tests, Alembic round-trip and SQLite foreign_key_check.
 
 
 ## CI gate
@@ -98,3 +98,35 @@ A green GitHub Actions run for the tested commit is required before a phase is r
 
 ## Phase 2 review note
 The first CI run identified Ruff findings (unused imports, an unused test variable and a forward-reference annotation). These were corrected in the follow-up commit. The lint profile was narrowed to correctness/security-adjacent rules rather than enforcing import layout and line-length style at this stage.
+
+
+## Phase 3 import engine — automated QA result
+The import-engine automated acceptance tests are **PASS** on final QA branch head `5471e5851c347237a7b1cebea15427d67770d24a` (GitHub Actions run `42623635331`): Python 3.11, 3.12 and 3.13 each passed Ruff, the full test suite (92 tests), Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign_key_check. Each matrix job also passed on the preceding code head `f94b6b1c9473b64a71ec13dbae3e194cc36b7c6e` (run `42623496040`).
+
+- IMP-12: allowlist/signature, malformed/oversized input, streamed row limit, column limit, XLSX ZIP entry/expansion/compression controls and PDF page/row limits — automated tests.
+- IMP-13: explicit CSV encoding/delimiter, XLSX worksheet, date format and decimal/thousands separators — automated tests and service validation.
+- IMP-14: XLSX formula cells rejected; macros are never executed — automated test and code-level check.
+- IMP-15: preview writes ImportBatch/ImportRow staging and audit only; no Transaction before confirmation — integration test.
+- IMP-16: explicit partial confirmation commits only VALID/VALID_WITH_WARNING rows atomically; REVIEW/INVALID/DUPLICATE remain unlinked — integration test and forced fingerprint-collision rollback test.
+- IMP-17: referenced duplicates are classified DUPLICATE; reference-less identical/matching rows are REVIEW — integration tests.
+- IMP-18: PDF page/table/row provenance, scanned/image-only rejection, encryption rejection and ambiguous table-width rejection — automated tests.
+- IMP-19: service-level role and CompanyContext checks reject VIEWER imports and forged cross-company contexts — integration tests.
+- IMP-20: repeated commit of the same preview is idempotent; fingerprint lookup is chunked for large batches — integration tests.
+- PDF-08: parser code only extracts PDF text/tables; no JavaScript/action execution or embedded-file extraction API is invoked — code-level review.
+
+**Still BLOCKED / not performed:** manual browser-based Streamlit smoke test (login → upload → preview → confirm → verify transaction list) and third-party penetration/security review. These do not invalidate the passing automated backend/parser tests, but full release acceptance remains open until completed.
+
+
+## Phase 4 categorization and review acceptance criteria — implementation in progress
+- CAT-07 Larger numeric priority wins; only a unique top-priority rule may assign a category.
+- CAT-08 Equal highest-priority matches return NEEDS_REVIEW and do not auto-assign.
+- CAT-09 A manual category assignment is audited and not overwritten by rule application.
+- CAT-10 Category kind must be BOTH or match the transaction's INFLOW/OUTFLOW direction.
+- CAT-11 Confirmed imports apply company-scoped rules within the same atomic batch commit.
+- REV-01 Review queue lists only pending REVIEW rows in the active company and is accessible only to ADMIN/ACCOUNTANT.
+- REV-02 CONFIRMED_DUPLICATE and REJECTED decisions update row status, reviewer, time, note and audit.
+- REV-03 CORRECTED_AND_ACCEPTED requires validated corrected values and a manual unique reference, creates a transaction and links the source row atomically.
+- REV-04 A corrected acceptance preserves the original ImportRow source fingerprint; re-importing the same reference-less source row returns it to REVIEW rather than silently creating another transaction.
+- REV-05 Review decisions and corrected transactions are audited; batch counters/status are recomputed.
+- REV-06 Repeated decisions on a non-REVIEW row are denied; duplicate fingerprint collision rolls back the decision.
+All Phase 4 criteria remain BLOCKED until latest branch-head CI and workflow evidence pass. Manual browser-based QA also remains required.

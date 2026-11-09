@@ -57,3 +57,21 @@ The initial SQLAlchemy schema implements the entities above. `ImportRow.transact
 **AuthSession:** id UUID, user_id FK, token_hash SHA-256 (never raw token), created_at, expires_at, nullable revoked_at, nullable last_seen_at. Index (user_id, expires_at); unique token_hash. Signed token payload contains version, session ID, user ID, expiry and nonce; token signature uses HMAC-SHA256.
 **BootstrapState:** singleton integer id constrained to 1, initial_admin_user_id unique FK, initialized_at. Inserted in the same transaction as first ADMIN, workspace and membership; its presence permanently closes first-run setup.
 User adds `must_change_password` to force newly provisioned users to replace temporary credentials. WorkspaceMembership adds `is_active` to support membership deactivation without deleting historical role/audit information.
+
+
+## Phase 3 import runtime implementation defaults — 2026-11-09
+- ImportBatch and ImportRow are created at preview time as isolated staging records. No Transaction is inserted until explicit confirmation. Preview staging is company-scoped and audited.
+- File constraints: 10 MiB upload; XLSX expanded ZIP 50 MiB / 200:1 maximum ratio; PDF 100 pages; extracted data rows 10,000; UI preview sample 20 rows.
+- Mapping JSON persists column indexes and explicit parser settings (date format, decimal/thousands separator, CSV delimiter/encoding, XLSX worksheet, direction mode). Required: transaction_date, amount, currency and either direction column or signed-amount mode.
+- The original file bytes are not retained. ImportBatch stores a sanitized filename, SHA-256, file type, parser version, extraction metadata and mapping; ImportRow stores bounded sanitized source values, normalized values, stable issues and PDF source page/table/row.
+- Fingerprint v1 hashes company_id, transaction_date, normalized Decimal amount, uppercase currency, direction, normalized reference and normalized counterparty. NFKC, whitespace collapse and casefold are applied to text. Rows identical without reference enter REVIEW.
+- VALID and VALID_WITH_WARNING are the only statuses linked to new Transactions. INVALID, DUPLICATE, BLANK and REVIEW rows remain unlinked. Review resolution is a later vertical; outlier count is not populated until the outlier policy is approved.
+
+
+## Phase 4 categorization and review implementation details
+- Category and CategorizationRule remain company-scoped. Category.kind is checked against Transaction.direction; a transaction stores exactly one nullable category_id.
+- Numeric rule priority is descending (larger number wins). Equal highest priority across matching rules does not assign a category; the result is NEEDS_REVIEW.
+- Manual category assignment sets categorization_source=MANUAL and categorization_rule_id=NULL. Rule application must preserve MANUAL assignments.
+- Review resolution stores reviewed_by_user_id, reviewed_at, review_decision and resolution_note on ImportRow. CONFIRMED_DUPLICATE maps to row_status=DUPLICATE; REJECTED maps to INVALID; CORRECTED_AND_ACCEPTED maps to VALID_WITH_WARNING and creates a linked Transaction.
+- A corrected acceptance needs a nonempty manual unique reference. ImportRow.source_fingerprint keeps the original reference-less fingerprint for future re-import review detection; the linked Transaction stores the corrected fingerprint.
+- Batch counts/status are recomputed after every review decision. No schema migration is expected for this phase; all required review/category fields exist in the approved foundation schema.
