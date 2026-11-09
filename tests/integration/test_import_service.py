@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import date
 from decimal import Decimal
 from io import BytesIO
 
@@ -13,6 +14,7 @@ from conftest import seed_workspace
 from sme_financial_dashboard.db.models import (
     AuditEvent,
     Direction,
+    ImportBatch,
     ImportRow,
     ImportRowStatus,
     MembershipRole,
@@ -27,6 +29,7 @@ from sme_financial_dashboard.services.import_service import (
     ImportConfirmationRequired,
     ImportMapping,
     ImportService,
+    ImportStateError,
 )
 
 
@@ -393,8 +396,6 @@ def test_concurrent_fingerprint_collision_rolls_back_entire_batch(session):
         )
     )
     session.flush()
-
-    from sme_financial_dashboard.services.import_service import ImportStateError
 
     with pytest.raises(ImportStateError, match="fingerprint changed"):
         ImportService.commit(
