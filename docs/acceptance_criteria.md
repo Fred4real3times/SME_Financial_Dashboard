@@ -35,3 +35,7 @@ Unit: Decimal calculations, parsing, fingerprint, categorization, filters. Integ
 
 ## Definition of Done
 All required criteria PASS with reproducible evidence; no P0/P1 issue; clean-clone README works; limits documented; no fake integration or inert control presented as operational.
+
+
+## Decision addendum — 2026-11-09
+Add required acceptance tests: (1) soft delete preserves DB row, import provenance and audit; removes transaction from default list/dashboard/export; restore, if approved, is authorized and audited. (2) ambiguous import row is staged as REVIEW, excluded from KPIs and transaction table until resolved; review decision records actor/time/reason; preview clearly distinguishes review from invalid/duplicate. (3) workspace member can access each authorized company but cannot access a company outside the workspace; all roles are tested across multiple companies. (4) if partial commit is approved, valid rows commit atomically while review rows remain staged. These criteria remain BLOCKED until implementation and test evidence exist.
