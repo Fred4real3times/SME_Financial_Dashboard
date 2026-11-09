@@ -71,7 +71,7 @@ alembic check
 
 For a fresh database migration round-trip, use a disposable test database and follow the CI workflow; do not downgrade a database containing data you wish to retain.
 
-The Phase 7 report records 143 passing tests on Python 3.11, 3.12 and 3.13 for the reviewed Phase 7 implementation. The current CI also runs the full test suite, Ruff and migration round-trip on Windows Python 3.11; confirm the exact release-candidate Actions run before acceptance.
+The Phase 8 candidate CI run [42670094234](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42670094234) passed 148 tests on Linux Python 3.11/3.12/3.13 and Windows Python 3.11. Ruff, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign-key checks also passed on all four jobs.
 
 ## 5. Generate the synthetic demonstration database
 
@@ -185,15 +185,15 @@ The report must identify findings by severity, provide reproducible evidence and
 
 ## 9. Release evidence matrix
 
-| Gate | Status at checklist creation | Required evidence |
+| Gate | Latest status (2026-11-09) | Required evidence |
 |---|---|---|
-| Automated CI on Phase 7 implementation | PASS | 143 tests per supported Python version; Ruff; Alembic round-trip; foreign-key check |
+| Automated CI on Phase 8 candidate | PASS | [Run 42670094234](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42670094234): 148 tests on Linux 3.11/3.12/3.13 and Windows 3.11; Ruff; Alembic round-trip; FK check |
 | Synthetic dataset integration tests | PASS | Three demo SMEs; 300 committed transactions; 312 staged rows |
 | SQLite backup/restore integration tests | PASS | Integrity, foreign-key, schema, checksum and overwrite tests |
 | Incomplete-schema backup rejection | PASS | Regression test in Phase 7 |
-| Verified snapshot uniqueness | PENDING CI | Partial unique index and duplicate-insert regression test |
-| Parser wall-clock limit | PENDING CI | Worker timeout, normal parse and stable error-code tests |
-| Windows Python 3.11 | PENDING CI | Full tests, Ruff, Alembic round-trip and SQLite FK check on `windows-latest` |
+| Verified snapshot uniqueness | PASS | Partial unique index and duplicate-insert regression test in run 42670094234 |
+| Parser wall-clock limit | PASS | Worker timeout, normal parse and stable error-code tests in run 42670094234 |
+| Windows Python 3.11 | PASS | 148 tests, Ruff, Alembic round-trip and SQLite FK check on `windows-latest` in run 42670094234 |
 | Clean Windows installation | BLOCKED | Tester completes section 2 |
 | Clean WSL2 installation | BLOCKED | Tester completes section 3 |
 | Interactive synthetic CLI | BLOCKED | Manual execution and observed output |

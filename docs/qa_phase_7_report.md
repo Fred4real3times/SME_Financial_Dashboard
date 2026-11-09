@@ -65,7 +65,7 @@ The initial backup validator required only `alembic_version`, `users`, `companie
 4. The interactive synthetic-data CLI has not been manually executed in a clean Windows/WSL environment. Integration tests cover the service and database behavior, not every terminal interaction.
 5. Headless Streamlit `AppTest` coverage exists, but it does not replace manual browser visual QA of layout, navigation and real user interaction.
 6. No independent external security review or penetration test has been performed.
-7. The application remains a local-first, single-instance SQLite MVP. Public exposure and concurrent hosted deployment are not approved; parser wall-clock CPU limits remain a separate hardening item.
+7. The application remains a local-first, single-instance SQLite MVP. Public exposure and concurrent hosted deployment are not approved. The parser worker has a 30-second wall-clock deadline but is not an OS sandbox and has no memory quota.
 
 ## 6. Release decision
 
@@ -76,3 +76,30 @@ The initial backup validator required only `alembic_version`, `users`, `companie
 - an independent security review is completed and any in-scope high/critical findings are closed.
 
 Do not treat the green CI matrix as proof that these manual or independent checks have been performed.
+
+## 7. Phase 8 release-hardening verification
+
+**Candidate commit:** `118b367dc5784c5990a68590a05b08ab5800bbca`  
+**GitHub Actions:** [run 42670094234 — all jobs successful](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42670094234)
+
+| Platform | Test suite | Ruff | Alembic round-trip | SQLite FK check |
+|---|---:|---:|---:|---:|
+| Linux / Python 3.11 | 148 passed | PASS | PASS | Clean |
+| Linux / Python 3.12 | 148 passed | PASS | PASS | Clean |
+| Linux / Python 3.13 | 148 passed | PASS | PASS | Clean |
+| Windows / Python 3.11 | 148 passed | PASS | PASS | Clean |
+
+The run includes the new partial unique index for verified opening snapshots, its duplicate-insert regression test, parser worker timeout tests, Windows SQLite backup/restore tests, and the new migration upgrade/check/downgrade/re-upgrade sequence.
+
+**Phase 8 automated hardening: PASS on the candidate commit.** This is not manual browser acceptance, WSL2 installation evidence or an independent security review.
+
+## 8. Updated release decision
+
+**Automated candidate CI: PASS.**  
+**Release acceptance: BLOCKED** until:
+- clean Windows and WSL2 installation and interactive synthetic-data CLI execution are recorded;
+- manual browser visual/workflow QA is completed;
+- backup and restore are manually exercised on the candidate database;
+- an independent security review is completed and any in-scope high/critical findings are closed.
+
+Do not treat successful Windows CI as proof that a user has completed the clean-clone Windows acceptance run, nor treat the CI matrix as an independent security audit.

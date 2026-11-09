@@ -189,11 +189,11 @@ The merged Phase 6 commit was followed by a matrix run that exposed a UI smoke a
 
 Post-rebase CI is required on the new exact branch head before Phase 7 can be considered merge-ready.
 
-### Release hardening delivery — implementation added; exact-head CI pending
+### Release hardening delivery — automated CI PASS
 - Added a partial unique database index for verified opening snapshots keyed by company/account/date/currency. The migration refuses to proceed when legacy data already contains conflicting verified snapshots; it never chooses or deletes a financial value automatically.
 - Added disposable parser workers for CSV, XLSX and digital PDF extraction and XLSX worksheet discovery, with a 30-second wall-clock deadline and stable error codes.
 - Added regression coverage for duplicate verified snapshot insertion, bounded parsing, timeout termination and parser error propagation.
-- Exact-head CI must pass on Python 3.11, 3.12 and 3.13, including Ruff, tests, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign-key checks.
+- Candidate commit `118b367dc5784c5990a68590a05b08ab5800bbca` passed GitHub Actions run [42670094234](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42670094234): 148 tests on Linux Python 3.11/3.12/3.13 and Windows Python 3.11, plus Ruff, Alembic round-trip and SQLite foreign-key checks.
 - Manual Windows/WSL install, interactive synthetic CLI, browser workflow/visual QA, restore operation and independent security review remain external release gates.
 
 ### Cross-platform CI hardening — implementation added; verification pending
