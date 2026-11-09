@@ -762,27 +762,28 @@ if companies:
 
     if all_categories and workspace_context.role in {MembershipRole.ADMIN, MembershipRole.ACCOUNTANT}:
         with session_factory() as db:
-            uncategorized = list(
+            transactions_for_categorization = list(
                 db.scalars(
                     select(Transaction)
                     .where(
                         Transaction.company_id == chosen,
                         Transaction.deleted_at.is_(None),
-                        Transaction.category_id.is_(None),
                     )
                     .order_by(Transaction.transaction_date.desc(), Transaction.id)
                     .limit(100)
                 ).all()
             )
-        if uncategorized:
-            st.markdown("**Uncategorized transactions**")
+        if transactions_for_categorization:
+            st.markdown("**Transactions for manual categorization or rule application**")
+            category_names = {category.id: category.name for category in all_categories}
             transaction_labels = {
                 transaction.id: (
                     f"{transaction.transaction_date.isoformat()} · "
                     f"{transaction.amount} {transaction.currency} · "
-                    f"{transaction.description or transaction.counterparty or 'Transaction'}"
+                    f"{transaction.description or transaction.counterparty or 'Transaction'} · "
+                    f"{category_names.get(transaction.category_id, 'Uncategorized')}"
                 )
-                for transaction in uncategorized
+                for transaction in transactions_for_categorization
             }
             selected_transaction_id = st.selectbox(
                 "Select transaction",
@@ -854,10 +855,25 @@ if companies:
                 company_context = resolve_company_context(
                     db, user_id=user.id, company_id=chosen
                 )
-                review_items = ReviewService.list_pending(
-                    db, company_context, limit=100
+                pending_review_count = ReviewService.count_pending(db, company_context)
+                review_page_count = max(1, (pending_review_count + 99) // 100)
+                review_page = st.number_input(
+                    "Review queue page",
+                    min_value=1,
+                    max_value=review_page_count,
+                    value=1,
+                    step=1,
+                    key=f"review_page_{chosen}",
                 )
-            st.caption(f"{len(review_items)} pending rows shown (maximum 100 per page).")
+                review_items = ReviewService.list_pending(
+                    db,
+                    company_context,
+                    limit=100,
+                    offset=(int(review_page) - 1) * 100,
+                )
+            st.caption(
+                f"{pending_review_count} pending rows · page {int(review_page)} of {review_page_count}."
+            )
             if review_items:
                 review_labels = {
                     item.row_id: (

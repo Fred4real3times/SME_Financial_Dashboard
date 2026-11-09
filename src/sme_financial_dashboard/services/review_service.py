@@ -9,7 +9,7 @@ from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -200,10 +200,10 @@ class ReviewService:
         offset: int = 0,
     ) -> list[ReviewQueueItem]:
         verified = _verified_import_context(session, context)
-        if isinstance(limit, bool) or not 1 <= limit <= 500:
-            raise ReviewResolutionError("Review queue limit must be between 1 and 500.")
-        if isinstance(offset, bool) or offset < 0:
-            raise ReviewResolutionError("Review queue offset cannot be negative.")
+        if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 500:
+            raise ReviewResolutionError("Review queue limit must be an integer from 1 to 500.")
+        if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
+            raise ReviewResolutionError("Review queue offset must be a non-negative integer.")
         results = session.execute(
             select(ImportRow, ImportBatch)
             .join(
@@ -235,6 +235,19 @@ class ReviewService:
             )
             for row, batch in results
         ]
+
+    @staticmethod
+    def count_pending(session: Session, context: CompanyContext) -> int:
+        verified = _verified_import_context(session, context)
+        return int(
+            session.scalar(
+                select(func.count()).select_from(ImportRow).where(
+                    ImportRow.company_id == verified.company_id,
+                    ImportRow.row_status == ImportRowStatus.REVIEW,
+                )
+            )
+            or 0
+        )
 
     @staticmethod
     def resolve(
