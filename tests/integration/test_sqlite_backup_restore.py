@@ -104,3 +104,22 @@ def test_backup_rejects_invalid_sqlite_and_same_file_paths(tmp_path: Path):
     _create_database(valid, "Valid workspace")
     with pytest.raises(SQLiteBackupError, match="different files"):
         create_sqlite_backup(valid, valid)
+
+
+def test_backup_rejects_database_missing_application_tables(tmp_path: Path):
+    incomplete = tmp_path / "incomplete.db"
+    backup = tmp_path / "should-not-be-created.db"
+    with sqlite3.connect(incomplete) as connection:
+        connection.execute(
+            "CREATE TABLE alembic_version (version_num VARCHAR(32) NOT NULL)"
+        )
+        connection.execute("INSERT INTO alembic_version VALUES ('qa-revision')")
+        # These were the previous minimum checks, but they do not form a usable app DB.
+        connection.execute("CREATE TABLE users (id INTEGER PRIMARY KEY)")
+        connection.execute("CREATE TABLE companies (id INTEGER PRIMARY KEY)")
+        connection.execute("CREATE TABLE transactions (id INTEGER PRIMARY KEY)")
+
+    with pytest.raises(SQLiteBackupError, match="missing tables"):
+        create_sqlite_backup(incomplete, backup)
+
+    assert not backup.exists()

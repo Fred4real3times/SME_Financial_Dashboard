@@ -25,7 +25,11 @@ class SQLiteBackupReport:
     foreign_key_violations: int
 
 
-_REQUIRED_TABLES = {"alembic_version", "users", "companies", "transactions"}
+# Importing the ORM models registers every application table on Base.metadata.
+# Require the full mapped schema, not only a handful of core table names.
+from sme_financial_dashboard.db.models import Base
+
+_REQUIRED_TABLES = {"alembic_version", *Base.metadata.tables.keys()}
 
 
 def _database_path(value: str | Path, *, must_exist: bool) -> Path:
