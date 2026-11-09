@@ -5,8 +5,16 @@ from __future__ import annotations
 import hashlib
 
 import streamlit as st
+from sqlalchemy import select
 from sme_financial_dashboard.config import Settings
-from sme_financial_dashboard.db.models import BootstrapState, MembershipRole
+from sme_financial_dashboard.db.models import (
+    BootstrapState,
+    CategoryKind,
+    MatchField,
+    MatchOperator,
+    MembershipRole,
+    Transaction,
+)
 from sme_financial_dashboard.domain.import_parsing import (
     ImportFileError,
     list_xlsx_worksheets,
@@ -23,6 +31,18 @@ from sme_financial_dashboard.services.import_service import (
     ImportService,
     ImportServiceError,
 )
+from sme_financial_dashboard.services.categorization_service import (
+    CategorizationError,
+    CategorizationOutcome,
+    CategorizationRuleService,
+    CategorizationService,
+    CategoryService,
+)
+from sme_financial_dashboard.services.review_service import (
+    ReviewResolutionError,
+    ReviewService,
+)
+from sme_financial_dashboard.db.models import ReviewDecision
 
 st.set_page_config(page_title="SME Financial Dashboard", page_icon="📊", layout="wide")
 
@@ -193,7 +213,7 @@ with col_a:
             index=list(labels).index(previous),
         )
         st.session_state["active_company_id"] = chosen
-        st.info("Company context is resolved from your active workspace membership. The dashboard and import modules will appear here in subsequent phases.")
+        st.info("Company context is resolved from your active workspace membership. Imports, review, categories and transaction categorization are available below.")
     else:
         st.info("No company has been created in this workspace yet.")
 with col_b:
@@ -562,3 +582,387 @@ if companies:
                             st.error(str(exc))
                         except PermissionError:
                             st.error("You are no longer authorized to import into this company.")
+
+
+# Phase 4 — categories, deterministic rules and human review queue.
+if companies:
+    st.divider()
+    st.subheader("Categories and categorization rules")
+
+    with session_factory() as db:
+        try:
+            company_context = resolve_company_context(
+                db, user_id=user.id, company_id=chosen
+            )
+            categories = CategoryService.list_categories(db, company_context)
+            all_categories = CategoryService.list_categories(
+                db, company_context, include_inactive=True
+            )
+            rules = CategorizationRuleService.list_rules(
+                db, company_context, include_inactive=True
+            )
+        except PermissionError:
+            categories = []
+            all_categories = []
+            rules = []
+
+    if workspace_context.role in {MembershipRole.ADMIN, MembershipRole.ACCOUNTANT}:
+        with st.expander("Create a category", expanded=False):
+            with st.form(f"create_category_{chosen}"):
+                category_name = st.text_input("Category name", max_chars=80)
+                category_kind = st.selectbox(
+                    "Category direction",
+                    options=list(CategoryKind),
+                    format_func=lambda value: value.value,
+                )
+                create_category = st.form_submit_button("Create category")
+            if create_category:
+                try:
+                    with session_factory() as db, db.begin():
+                        company_context = resolve_company_context(
+                            db, user_id=user.id, company_id=chosen
+                        )
+                        created = CategoryService.create_category(
+                            db,
+                            company_context,
+                            name=category_name,
+                            kind=category_kind,
+                        )
+                    st.success(f"Category '{created.name}' created.")
+                    st.rerun()
+                except CategorizationError as exc:
+                    st.error(str(exc))
+                except PermissionError:
+                    st.error("You are not authorized to manage categories in this company.")
+
+        if categories:
+            with st.expander("Create a categorization rule", expanded=False):
+                category_labels = {
+                    category.id: f"{category.name} · {category.kind.value}"
+                    for category in categories
+                }
+                with st.form(f"create_rule_{chosen}"):
+                    rule_category_id = st.selectbox(
+                        "Destination category",
+                        options=list(category_labels),
+                        format_func=lambda value: category_labels[value],
+                    )
+                    rule_field = st.selectbox(
+                        "Match field",
+                        options=list(MatchField),
+                        format_func=lambda value: {
+                            MatchField.KEYWORD: "Keyword in description",
+                            MatchField.COUNTERPARTY: "Counterparty",
+                            MatchField.REFERENCE: "Transaction reference",
+                        }[value],
+                    )
+                    rule_operator = st.selectbox(
+                        "Match operator",
+                        options=list(MatchOperator),
+                        format_func=lambda value: {
+                            MatchOperator.CONTAINS: "Contains",
+                            MatchOperator.EQUALS: "Equals",
+                            MatchOperator.STARTS_WITH: "Starts with",
+                        }[value],
+                    )
+                    rule_value = st.text_input("Match value", max_chars=200)
+                    rule_priority = st.number_input(
+                        "Priority (higher number wins; ties require manual review)",
+                        min_value=1,
+                        max_value=10_000,
+                        value=100,
+                        step=1,
+                    )
+                    create_rule = st.form_submit_button("Create rule")
+                if create_rule:
+                    try:
+                        with session_factory() as db, db.begin():
+                            company_context = resolve_company_context(
+                                db, user_id=user.id, company_id=chosen
+                            )
+                            created_rule = CategorizationRuleService.create_rule(
+                                db,
+                                company_context,
+                                category_id=rule_category_id,
+                                match_field=rule_field,
+                                operator=rule_operator,
+                                match_value=rule_value,
+                                priority=int(rule_priority),
+                            )
+                        st.success(f"Rule created with priority {created_rule.priority}.")
+                        st.rerun()
+                    except CategorizationError as exc:
+                        st.error(str(exc))
+                    except PermissionError:
+                        st.error("You are not authorized to manage rules in this company.")
+
+        if rules:
+            st.markdown("**Active and inactive rules**")
+            st.dataframe(
+                [
+                    {
+                        "Priority": rule.priority,
+                        "Match field": rule.match_field.value,
+                        "Operator": rule.operator.value,
+                        "Match value": rule.match_value,
+                        "Category": next(
+                            (item.name for item in all_categories if item.id == rule.category_id),
+                            "(inactive or unavailable)",
+                        ),
+                        "Active": rule.is_active,
+                    }
+                    for rule in rules
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
+            active_rules = [rule for rule in rules if rule.is_active]
+            if active_rules:
+                rule_labels = {
+                    rule.id: f"{rule.priority} · {rule.match_field.value} {rule.operator.value} {rule.match_value}"
+                    for rule in active_rules
+                }
+                rule_to_disable = st.selectbox(
+                    "Deactivate a rule",
+                    options=list(rule_labels),
+                    format_func=lambda value: rule_labels[value],
+                    key=f"deactivate_rule_select_{chosen}",
+                )
+                if st.button("Deactivate selected rule", key=f"deactivate_rule_{chosen}"):
+                    try:
+                        with session_factory() as db, db.begin():
+                            company_context = resolve_company_context(
+                                db, user_id=user.id, company_id=chosen
+                            )
+                            CategorizationRuleService.update_rule(
+                                db,
+                                company_context,
+                                rule_id=rule_to_disable,
+                                is_active=False,
+                            )
+                        st.success("Rule deactivated.")
+                        st.rerun()
+                    except CategorizationError as exc:
+                        st.error(str(exc))
+                    except PermissionError:
+                        st.error("You are not authorized to manage rules in this company.")
+
+    if all_categories:
+        with session_factory() as db:
+            uncategorized = list(
+                db.scalars(
+                    select(Transaction)
+                    .where(
+                        Transaction.company_id == chosen,
+                        Transaction.deleted_at.is_(None),
+                        Transaction.category_id.is_(None),
+                    )
+                    .order_by(Transaction.transaction_date.desc(), Transaction.id)
+                    .limit(100)
+                ).all()
+            )
+        if uncategorized:
+            st.markdown("**Uncategorized transactions**")
+            transaction_labels = {
+                transaction.id: (
+                    f"{transaction.transaction_date.isoformat()} · "
+                    f"{transaction.amount} {transaction.currency} · "
+                    f"{transaction.description or transaction.counterparty or 'Transaction'}"
+                )
+                for transaction in uncategorized
+            }
+            selected_transaction_id = st.selectbox(
+                "Select transaction",
+                options=list(transaction_labels),
+                format_func=lambda value: transaction_labels[value],
+                key=f"categorization_transaction_{chosen}",
+            )
+            selected_category_options = [None, *[category.id for category in categories]]
+            selected_category_labels = {
+                category.id: f"{category.name} · {category.kind.value}"
+                for category in categories
+            }
+            manual_category_id = st.selectbox(
+                "Manual primary category (or clear)",
+                options=selected_category_options,
+                format_func=lambda value: (
+                    "— No category —" if value is None else selected_category_labels[value]
+                ),
+                key=f"manual_category_{chosen}",
+            )
+            action_col_a, action_col_b = st.columns(2)
+            with action_col_a:
+                if st.button(
+                    "Apply matching rules",
+                    key=f"apply_rules_{selected_transaction_id}",
+                ):
+                    try:
+                        with session_factory() as db, db.begin():
+                            company_context = resolve_company_context(
+                                db, user_id=user.id, company_id=chosen
+                            )
+                            result = CategorizationService.apply_rules(
+                                db, company_context, transaction_id=selected_transaction_id
+                            )
+                        st.success(f"Categorization result: {result.outcome.value}.")
+                        st.rerun()
+                    except CategorizationError as exc:
+                        st.error(str(exc))
+                    except PermissionError:
+                        st.error("You are not authorized to run categorization rules.")
+            with action_col_b:
+                if st.button(
+                    "Save manual category",
+                    key=f"save_manual_category_{selected_transaction_id}",
+                ):
+                    try:
+                        with session_factory() as db, db.begin():
+                            company_context = resolve_company_context(
+                                db, user_id=user.id, company_id=chosen
+                            )
+                            CategorizationService.assign_manual_category(
+                                db,
+                                company_context,
+                                transaction_id=selected_transaction_id,
+                                category_id=manual_category_id,
+                            )
+                        st.success("Manual category saved.")
+                        st.rerun()
+                    except CategorizationError as exc:
+                        st.error(str(exc))
+                    except PermissionError:
+                        st.error("You are not authorized to correct transactions.")
+
+    if workspace_context.role in {MembershipRole.ADMIN, MembershipRole.ACCOUNTANT}:
+        st.divider()
+        st.subheader("Manual import review queue")
+        try:
+            with session_factory() as db:
+                company_context = resolve_company_context(
+                    db, user_id=user.id, company_id=chosen
+                )
+                review_items = ReviewService.list_pending(
+                    db, company_context, limit=100
+                )
+            st.caption(f"{len(review_items)} pending rows shown (maximum 100 per page).")
+            if review_items:
+                review_labels = {
+                    item.row_id: (
+                        f"{item.file_name} · source row {item.source_row_number}"
+                        + (
+                            f" · PDF page {item.source_page_number}"
+                            if item.source_page_number
+                            else ""
+                        )
+                    )
+                    for item in review_items
+                }
+                selected_review_id = st.selectbox(
+                    "Select a row to review",
+                    options=list(review_labels),
+                    format_func=lambda value: review_labels[value],
+                    key=f"review_row_{chosen}",
+                )
+                selected_review = next(
+                    item for item in review_items if item.row_id == selected_review_id
+                )
+                st.write("**Extracted source values**")
+                st.json(selected_review.raw_values)
+                if selected_review.issues:
+                    st.write("**Review reasons**")
+                    st.dataframe(
+                        list(selected_review.issues),
+                        use_container_width=True,
+                        hide_index=True,
+                    )
+                with st.form(f"resolve_review_{selected_review.row_id}"):
+                    decision = st.selectbox(
+                        "Decision",
+                        options=[
+                            ReviewDecision.CONFIRMED_DUPLICATE,
+                            ReviewDecision.REJECTED,
+                            ReviewDecision.CORRECTED_AND_ACCEPTED,
+                        ],
+                        format_func=lambda value: {
+                            ReviewDecision.CONFIRMED_DUPLICATE: "Confirm duplicate",
+                            ReviewDecision.REJECTED: "Reject row",
+                            ReviewDecision.CORRECTED_AND_ACCEPTED: "Correct and accept",
+                        }[value],
+                    )
+                    review_note = st.text_area("Review note (required)", max_chars=500)
+                    correction = {}
+                    if decision is ReviewDecision.CORRECTED_AND_ACCEPTED:
+                        current = selected_review.normalized_values or {}
+                        st.caption(
+                            "A unique manual reference is required to accept an ambiguous row safely."
+                        )
+                        corrected_date = st.text_input(
+                            "Transaction date (YYYY-MM-DD)",
+                            value=str(current.get("transaction_date") or ""),
+                        )
+                        corrected_amount = st.text_input(
+                            "Amount (positive Decimal)", value=str(current.get("amount") or "")
+                        )
+                        corrected_currency = st.text_input(
+                            "Currency code", value=str(current.get("currency") or "XAF"), max_chars=3
+                        )
+                        corrected_direction = st.selectbox(
+                            "Direction",
+                            options=["INFLOW", "OUTFLOW"],
+                            index=0 if current.get("direction") != "OUTFLOW" else 1,
+                        )
+                        corrected_reference = st.text_input(
+                            "Unique manual reference",
+                            value=str(current.get("reference") or ""),
+                            max_chars=200,
+                        )
+                        corrected_counterparty = st.text_input(
+                            "Counterparty", value=str(current.get("counterparty") or ""), max_chars=200
+                        )
+                        corrected_description = st.text_input(
+                            "Description", value=str(current.get("description") or ""), max_chars=500
+                        )
+                        corrected_account = st.text_input(
+                            "Account name", value=str(current.get("account_name") or ""), max_chars=120
+                        )
+                        correction = {
+                            "transaction_date": corrected_date,
+                            "amount": corrected_amount,
+                            "currency": corrected_currency,
+                            "direction": corrected_direction,
+                            "reference": corrected_reference,
+                            "counterparty": corrected_counterparty,
+                            "description": corrected_description,
+                            "account_name": corrected_account,
+                        }
+                    resolve_review = st.form_submit_button("Save review decision", type="primary")
+                if resolve_review:
+                    try:
+                        with session_factory() as db, db.begin():
+                            company_context = resolve_company_context(
+                                db, user_id=user.id, company_id=chosen
+                            )
+                            result = ReviewService.resolve(
+                                db,
+                                company_context,
+                                row_id=selected_review_id,
+                                decision=decision,
+                                note=review_note,
+                                corrected_values=(
+                                    correction
+                                    if decision is ReviewDecision.CORRECTED_AND_ACCEPTED
+                                    else None
+                                ),
+                            )
+                        st.success(
+                            f"Review saved: {result.decision} · "
+                            f"batch {result.batch_status} · "
+                            f"{result.remaining_review_count} rows remain in REVIEW."
+                        )
+                        st.rerun()
+                    except ReviewResolutionError as exc:
+                        st.error(str(exc))
+                    except PermissionError:
+                        st.error("You are no longer authorized to review this company data.")
+        except PermissionError:
+            st.error("You are not authorized to access the import review queue.")
