@@ -1479,7 +1479,7 @@ if companies and dashboard_filters is not None:
             f"{dashboard_filters.end_date.isoformat()}|{dashboard_filters.currency}|"
             f"{dashboard_filters.account_name}|{dashboard_filters.category_id}|"
             f"{dashboard_filters.direction}"
-        ).encode("utf-8")
+        ).encode()
     ).hexdigest()[:12]
     csv_state_key = f"csv_export_{chosen}_{export_signature}"
     pdf_state_key = f"pdf_export_{chosen}_{export_signature}"
