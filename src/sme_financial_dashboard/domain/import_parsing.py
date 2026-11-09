@@ -15,8 +15,10 @@ from openpyxl import load_workbook
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
 MAX_XLSX_EXPANDED_BYTES = 50 * 1024 * 1024
+MAX_XLSX_ARCHIVE_ENTRIES = 1_000
 MAX_PDF_PAGES = 100
 MAX_IMPORT_ROWS = 10_000
+MAX_IMPORT_COLUMNS = 100
 PREVIEW_SAMPLE_ROWS = 20
 PARSER_VERSION = "1.0.0"
 
@@ -57,6 +59,11 @@ def _cell_text(value: Any) -> str:
 
 
 def _headers(values: tuple[Any, ...] | list[Any]) -> tuple[str, ...]:
+    if len(values) > MAX_IMPORT_COLUMNS:
+        raise ImportFileError(
+            "COLUMN_LIMIT_EXCEEDED",
+            f"Statement contains more than {MAX_IMPORT_COLUMNS} columns.",
+        )
     result: list[str] = []
     counts: dict[str, int] = {}
     for index, value in enumerate(values, start=1):
@@ -89,6 +96,11 @@ def list_xlsx_worksheets(file_bytes: bytes) -> tuple[str, ...]:
     try:
         with zipfile.ZipFile(io.BytesIO(file_bytes)) as archive:
             infos = archive.infolist()
+            if len(infos) > MAX_XLSX_ARCHIVE_ENTRIES:
+                raise ImportFileError(
+                    "XLSX_ENTRY_LIMIT_EXCEEDED",
+                    f"Workbook contains more than {MAX_XLSX_ARCHIVE_ENTRIES} ZIP entries.",
+                )
             if sum(item.file_size for item in infos) > MAX_XLSX_EXPANDED_BYTES:
                 raise ImportFileError("XLSX_EXPANSION_LIMIT", "Expanded workbook exceeds 50 MiB.")
             if any(
@@ -133,24 +145,39 @@ def inspect_statement(
         try:
             text = file_bytes.decode(encoding, errors="strict")
             reader = csv.reader(io.StringIO(text, newline=""), delimiter=delimiter, strict=True)
-            matrix = list(reader)
+            first_row = next(reader, None)
+            if first_row is None:
+                raise ImportFileError("HEADER_MISSING", "CSV has no rows.")
+            if not any(_cell_text(value) for value in first_row):
+                raise ImportFileError("HEADER_MISSING", "CSV header row is blank.")
+            header = _headers(first_row)
+            rows: list[ParsedRow] = []
+            for row_number, values in enumerate(reader, start=2):
+                if len(rows) >= MAX_IMPORT_ROWS:
+                    raise ImportFileError("ROW_LIMIT_EXCEEDED", "CSV exceeds the 10,000-row limit.")
+                if len(values) > MAX_IMPORT_COLUMNS:
+                    raise ImportFileError(
+                        "COLUMN_LIMIT_EXCEEDED",
+                        f"CSV row {row_number} exceeds the {MAX_IMPORT_COLUMNS}-column limit.",
+                    )
+                if len(values) > len(header) and any(
+                    _cell_text(value) for value in values[len(header):]
+                ):
+                    raise ImportFileError(
+                        "ROW_COLUMN_COUNT_MISMATCH",
+                        f"CSV row {row_number} has extra columns.",
+                    )
+                padded = tuple(values) + tuple(
+                    "" for _ in range(max(0, len(header) - len(values)))
+                )
+                rows.append(ParsedRow(row_number, padded))
         except UnicodeDecodeError as exc:
-            raise ImportFileError("CSV_ENCODING_INVALID", "File cannot be decoded with the selected encoding.") from exc
+            raise ImportFileError(
+                "CSV_ENCODING_INVALID",
+                "File cannot be decoded with the selected encoding.",
+            ) from exc
         except csv.Error as exc:
             raise ImportFileError("CSV_MALFORMED", "CSV structure is malformed.") from exc
-        if not matrix:
-            raise ImportFileError("HEADER_MISSING", "CSV has no rows.")
-        if not any(_cell_text(value) for value in matrix[0]):
-            raise ImportFileError("HEADER_MISSING", "CSV header row is blank.")
-        header = _headers(matrix[0])
-        rows: list[ParsedRow] = []
-        for row_number, values in enumerate(matrix[1:], start=2):
-            if len(rows) >= MAX_IMPORT_ROWS:
-                raise ImportFileError("ROW_LIMIT_EXCEEDED", "CSV exceeds the 10,000-row limit.")
-            if len(values) > len(header) and any(_cell_text(value) for value in values[len(header):]):
-                raise ImportFileError("ROW_COLUMN_COUNT_MISMATCH", f"CSV row {row_number} has extra columns.")
-            padded = tuple(values) + tuple("" for _ in range(max(0, len(header) - len(values))))
-            rows.append(ParsedRow(row_number, padded))
         return ParsedDocument("CSV", "CSV_ROWS", header, tuple(rows))
 
     if suffix == ".xlsx":
@@ -159,6 +186,11 @@ def inspect_statement(
         try:
             with zipfile.ZipFile(io.BytesIO(file_bytes)) as archive:
                 infos = archive.infolist()
+                if len(infos) > MAX_XLSX_ARCHIVE_ENTRIES:
+                    raise ImportFileError(
+                        "XLSX_ENTRY_LIMIT_EXCEEDED",
+                        f"Workbook contains more than {MAX_XLSX_ARCHIVE_ENTRIES} ZIP entries.",
+                    )
                 expanded_size = sum(item.file_size for item in infos)
                 if expanded_size > MAX_XLSX_EXPANDED_BYTES:
                     raise ImportFileError("XLSX_EXPANSION_LIMIT", "Expanded workbook exceeds 50 MiB.")
@@ -193,6 +225,11 @@ def inspect_statement(
                 first = next(iterator)
             except StopIteration:
                 raise ImportFileError("HEADER_MISSING", "Selected worksheet is empty.") from None
+            if len(first) > MAX_IMPORT_COLUMNS:
+                raise ImportFileError(
+                    "COLUMN_LIMIT_EXCEEDED",
+                    f"Worksheet contains more than {MAX_IMPORT_COLUMNS} columns.",
+                )
             if any(isinstance(cell.value, str) and cell.value.startswith("=") for cell in first):
                 raise ImportFileError(
                     "XLSX_FORMULA_UNSUPPORTED",
@@ -205,6 +242,13 @@ def inspect_statement(
             for excel_row_number, cells in enumerate(iterator, start=2):
                 if len(rows) >= MAX_IMPORT_ROWS:
                     raise ImportFileError("ROW_LIMIT_EXCEEDED", "Worksheet exceeds the 10,000-row limit.")
+                if len(cells) > MAX_IMPORT_COLUMNS and any(
+                    _cell_text(cell.value) for cell in cells[MAX_IMPORT_COLUMNS:]
+                ):
+                    raise ImportFileError(
+                        "COLUMN_LIMIT_EXCEEDED",
+                        f"Worksheet row {excel_row_number} exceeds the {MAX_IMPORT_COLUMNS}-column limit.",
+                    )
                 if len(cells) > len(header) and any(_cell_text(cell.value) for cell in cells[len(header):]):
                     raise ImportFileError(
                         "ROW_COLUMN_COUNT_MISMATCH",
@@ -259,10 +303,10 @@ def inspect_statement(
                             "A PDF table does not repeat the detected header; its column alignment is uncertain.",
                         )
                     for values in data_rows:
-                        if len(values) > len(headers) and any(values[len(headers):]):
+                        if len(values) != len(headers):
                             raise ImportFileError(
                                 "PDF_TABLE_LAYOUT_AMBIGUOUS",
-                                "A PDF row contains extra values outside the detected header columns.",
+                                "A PDF row does not have the same number of columns as the detected header.",
                             )
                         if len(rows) >= MAX_IMPORT_ROWS:
                             raise ImportFileError("ROW_LIMIT_EXCEEDED", "PDF exceeds the 10,000-row limit.")
