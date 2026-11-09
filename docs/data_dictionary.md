@@ -27,3 +27,7 @@ Transaction(company_id, transaction_date); Transaction(company_id,currency,direc
 
 ## Decisions still open
 Can transactions split categories? Proposal no. Dedicated Account entity? Proposal account_name initially. Exact fingerprint fields and identical legitimate rows. Currency exponent/rounding and amount bounds. File size/row limits and raw-row retention. Snapshot conflict and closing-balance cutoff. Exact meaning of is_validated.
+
+
+## Decision addendum — 2026-11-09
+Accepted schema implications: WorkspaceMembership is the access anchor for multi-company access. Soft deletion requires transaction lifecycle metadata (preferred explicit `deleted_at`, `deleted_by_user_id`, `deletion_reason`; `is_active` may be derived or retained for query convenience) and an AuditEvent; do not physically delete the transaction or its ImportRow. ImportRow must support a REVIEW status and structured issue/review reason; staged ambiguous rows must not have a committed transaction_id. Add review resolution metadata (reviewed_by, reviewed_at, resolution/status) if approved. Open: role scope (workspace-wide or per-company), restore permissions/semantics, partial batch commit, and exact review resolutions.
