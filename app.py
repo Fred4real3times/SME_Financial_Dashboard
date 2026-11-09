@@ -648,6 +648,62 @@ if companies:
                 except PermissionError:
                     st.error("You are not authorized to manage categories in this company.")
 
+        if all_categories:
+            with st.expander("Edit or deactivate a category", expanded=False):
+                category_edit_labels = {
+                    category.id: f"{category.name} · {category.kind.value} · "
+                    f"{'active' if category.is_active else 'inactive'}"
+                    for category in all_categories
+                }
+                selected_category_edit_id = st.selectbox(
+                    "Category to edit",
+                    options=list(category_edit_labels),
+                    format_func=lambda value: category_edit_labels[value],
+                    key=f"category_edit_select_{chosen}",
+                )
+                selected_category_edit = next(
+                    category
+                    for category in all_categories
+                    if category.id == selected_category_edit_id
+                )
+                with st.form(f"edit_category_{chosen}"):
+                    edited_category_name = st.text_input(
+                        "Category name",
+                        value=selected_category_edit.name,
+                        max_chars=80,
+                    )
+                    edited_category_kind = st.selectbox(
+                        "Category direction",
+                        options=list(CategoryKind),
+                        index=list(CategoryKind).index(selected_category_edit.kind),
+                        format_func=lambda value: value.value,
+                    )
+                    edited_category_active = st.checkbox(
+                        "Active",
+                        value=selected_category_edit.is_active,
+                    )
+                    save_category = st.form_submit_button("Save category changes")
+                if save_category:
+                    try:
+                        with session_factory() as db, db.begin():
+                            company_context = resolve_company_context(
+                                db, user_id=user.id, company_id=chosen
+                            )
+                            CategoryService.update_category(
+                                db,
+                                company_context,
+                                category_id=selected_category_edit_id,
+                                name=edited_category_name,
+                                kind=edited_category_kind,
+                                is_active=edited_category_active,
+                            )
+                        st.success("Category updated.")
+                        st.rerun()
+                    except CategorizationError as exc:
+                        st.error(str(exc))
+                    except PermissionError:
+                        st.error("You are not authorized to update categories.")
+
         if categories:
             with st.expander("Create a categorization rule", expanded=False):
                 category_labels = {
@@ -708,6 +764,98 @@ if companies:
                         st.error(str(exc))
                     except PermissionError:
                         st.error("You are not authorized to manage rules in this company.")
+
+        if rules and categories:
+            with st.expander("Edit a categorization rule", expanded=False):
+                editable_rule_labels = {
+                    rule.id: (
+                        f"{rule.priority} · {rule.match_field.value} "
+                        f"{rule.operator.value} {rule.match_value}"
+                    )
+                    for rule in rules
+                }
+                selected_rule_edit_id = st.selectbox(
+                    "Rule to edit",
+                    options=list(editable_rule_labels),
+                    format_func=lambda value: editable_rule_labels[value],
+                    key=f"rule_edit_select_{chosen}",
+                )
+                selected_rule_edit = next(
+                    rule for rule in rules if rule.id == selected_rule_edit_id
+                )
+                category_label_options = {
+                    category.id: f"{category.name} · {category.kind.value}"
+                    for category in categories
+                }
+                selected_rule_category_default = (
+                    selected_rule_edit.category_id
+                    if selected_rule_edit.category_id in category_label_options
+                    else categories[0].id
+                )
+                with st.form(f"edit_rule_{chosen}"):
+                    edited_rule_category = st.selectbox(
+                        "Destination category",
+                        options=list(category_label_options),
+                        index=list(category_label_options).index(selected_rule_category_default),
+                        format_func=lambda value: category_label_options[value],
+                    )
+                    edited_rule_field = st.selectbox(
+                        "Match field",
+                        options=list(MatchField),
+                        index=list(MatchField).index(selected_rule_edit.match_field),
+                        format_func=lambda value: {
+                            MatchField.KEYWORD: "Keyword in description",
+                            MatchField.COUNTERPARTY: "Counterparty",
+                            MatchField.REFERENCE: "Transaction reference",
+                        }[value],
+                    )
+                    edited_rule_operator = st.selectbox(
+                        "Match operator",
+                        options=list(MatchOperator),
+                        index=list(MatchOperator).index(selected_rule_edit.operator),
+                        format_func=lambda value: {
+                            MatchOperator.CONTAINS: "Contains",
+                            MatchOperator.EQUALS: "Equals",
+                            MatchOperator.STARTS_WITH: "Starts with",
+                        }[value],
+                    )
+                    edited_rule_value = st.text_input(
+                        "Match value", value=selected_rule_edit.match_value, max_chars=200
+                    )
+                    edited_rule_priority = st.number_input(
+                        "Priority (higher number wins)",
+                        min_value=1,
+                        max_value=10_000,
+                        value=selected_rule_edit.priority,
+                        step=1,
+                    )
+                    edited_rule_active = st.checkbox(
+                        "Active", value=selected_rule_edit.is_active
+                    )
+                    save_rule = st.form_submit_button("Save rule changes")
+                if save_rule:
+                    try:
+                        with session_factory() as db, db.begin():
+                            company_context = resolve_company_context(
+                                db, user_id=user.id, company_id=chosen
+                            )
+                            CategorizationRuleService.update_rule(
+                                db,
+                                company_context,
+                                rule_id=selected_rule_edit_id,
+                                category_id=edited_rule_category,
+                                match_field=edited_rule_field,
+                                operator=edited_rule_operator,
+                                match_value=edited_rule_value,
+                                priority=int(edited_rule_priority),
+                                is_active=edited_rule_active,
+                            )
+                        st.success("Categorization rule updated.")
+                        st.rerun()
+                    except CategorizationError as exc:
+                        st.error(str(exc))
+                    except PermissionError:
+                        st.error("You are not authorized to update rules.")
 
         if rules:
             st.markdown("**Active and inactive rules**")
