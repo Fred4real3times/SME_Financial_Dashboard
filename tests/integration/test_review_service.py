@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
+import hashlib
 
 import pytest
 from sqlalchemy import func, select
