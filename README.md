@@ -22,28 +22,72 @@ See `docs/` for the approved scope, architecture, data dictionary, threat model 
 - Windows 10/11, Linux or WSL2
 - SQLite for the local single-instance MVP
 
-## Windows PowerShell setup
+## Installation (Windows / WSL2)
 
+**Requirements:** Python 3.11–3.13.
+
+### 1. Download the project
+
+```bash
+git clone https://github.com/Fred4real3times/SME_Financial_Dashboard.git
+cd SME_Financial_Dashboard
+```
+
+### 2. Create and activate the virtual environment
+
+**Windows PowerShell**
 ```powershell
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-pip install -r requirements-dev.txt
-Copy-Item .env.example .env
-# Generate a local signing secret and paste it into SESSION_SECRET in .env:
-python scripts/generate_session_secret.py
-python -m pip install -e .
 ```
 
-For WSL/Linux, replace venv activation with `source .venv/bin/activate` and copy `.env.example` to `.env`.
+**WSL2 / Linux**
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
 
-## Database
+### 3. Install and configure
 
-The default database URL is `sqlite:///./.data/sme_financial_dashboard.db`. The directory is created automatically. Apply schema migrations with:
+Run these commands on either platform:
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+```
+
+Create the local configuration file:
+
+**Windows PowerShell**
+```powershell
+Copy-Item .env.example .env
+```
+
+**WSL2 / Linux**
+```bash
+cp .env.example .env
+```
+
+Generate a session secret:
+
+```bash
+python scripts/generate_session_secret.py
+```
+
+Copy the value displayed into `.env` after `SESSION_SECRET=`. Keep `.env` private; never commit it.
+
+### 4. Initialize and launch
 
 ```bash
 alembic upgrade head
+streamlit run app.py
 ```
+
+Open the local URL displayed by Streamlit. The default SQLite database is created automatically under `.data/`.
+  
+## Database
+
+The default database URL is `sqlite:///./.data/sme_financial_dashboard.db`. The directory is created automatically. The installation steps above apply the required migrations.
 
 ## Tests and lint
 
