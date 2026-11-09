@@ -29,7 +29,7 @@ See `docs/` for the approved scope, architecture, data dictionary, threat model 
 ### 1. Download the project
 
 ```bash
-git clone https://github.com/Fred4real3times/SME_Financial_Dashboard.git
+git clone --branch feat/phase-7-qa-tooling https://github.com/Fred4real3times/SME_Financial_Dashboard.git
 cd SME_Financial_Dashboard
 ```
 

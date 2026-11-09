@@ -17,10 +17,10 @@ The MVP is a local-first financial dashboard, not certified accounting software 
 
 ## 2. Clean-clone installation — Windows PowerShell
 
-Run from a new folder and a supported Python version (3.11, 3.12 or 3.13).
+Run from a new folder and a supported Python version (3.11, 3.12 or 3.13). The clone command checks out the current release-candidate branch, not the older `main` branch.
 
 ```powershell
-git clone https://github.com/Fred4real3times/SME_Financial_Dashboard.git
+git clone --branch feat/phase-7-qa-tooling https://github.com/Fred4real3times/SME_Financial_Dashboard.git
 Set-Location SME_Financial_Dashboard
 
 py -3.11 -m venv .venv
@@ -42,7 +42,7 @@ If PowerShell blocks activation, use a process-scoped execution-policy adjustmen
 Use a Linux filesystem path (for example, `~/projects`) rather than `/mnt/c` for the virtual environment and SQLite database where possible.
 
 ```bash
-git clone https://github.com/Fred4real3times/SME_Financial_Dashboard.git
+git clone --branch feat/phase-7-qa-tooling https://github.com/Fred4real3times/SME_Financial_Dashboard.git
 cd SME_Financial_Dashboard
 
 python3 --version   # Must be 3.11, 3.12 or 3.13
