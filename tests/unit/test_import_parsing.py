@@ -17,6 +17,8 @@ from sme_financial_dashboard.domain.import_parsing import (
     MAX_PDF_TOTAL_CHARACTERS,
     MAX_UPLOAD_BYTES,
     MAX_XLSX_ARCHIVE_ENTRIES,
+    MAX_XLSX_EXPANDED_BYTES,
+    MAX_PDF_TABLES_PER_PAGE,
     ImportFileError,
     inspect_statement,
 )
@@ -294,3 +296,83 @@ def test_pdf_total_character_limit_is_enforced(monkeypatch):
     with pytest.raises(ImportFileError) as error:
         inspect_statement(b"%PDF-1.7\nplaceholder", "oversized-document.pdf")
     assert error.value.code == "PDF_TOTAL_TEXT_LIMIT_EXCEEDED"
+
+
+
+def _xlsx_zip_with_payload(payload: bytes) -> bytes:
+    output = BytesIO()
+    with zipfile.ZipFile(output, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("[Content_Types].xml", b"<Types/>")
+        archive.writestr("xl/worksheets/sheet1.xml", payload)
+    return output.getvalue()
+
+
+def test_xlsx_expanded_size_limit_is_enforced():
+    oversized = _xlsx_zip_with_payload(b"A" * (MAX_XLSX_EXPANDED_BYTES + 1))
+    assert len(oversized) < MAX_UPLOAD_BYTES
+    with pytest.raises(ImportFileError) as error:
+        inspect_statement(oversized, "expanded-too-large.xlsx")
+    assert error.value.code == "XLSX_EXPANSION_LIMIT"
+
+
+def test_xlsx_compression_ratio_limit_is_enforced():
+    compressed = _xlsx_zip_with_payload(b"A" * (2 * 1024 * 1024))
+    assert len(compressed) < MAX_UPLOAD_BYTES
+    with pytest.raises(ImportFileError) as error:
+        inspect_statement(compressed, "compression-ratio.xlsx")
+    assert error.value.code == "XLSX_COMPRESSION_RATIO"
+
+
+def test_pdf_table_count_limit_is_enforced(monkeypatch):
+    class FakePage:
+        def extract_text(self):
+            return "Date Amount"
+
+        def extract_tables(self):
+            return [[["Date", "Amount"]] for _ in range(MAX_PDF_TABLES_PER_PAGE + 1)]
+
+    class FakePdf:
+        pages = [FakePage()]
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(
+        "sme_financial_dashboard.domain.import_parsing.pdfplumber.open",
+        lambda *_args, **_kwargs: FakePdf(),
+    )
+    with pytest.raises(ImportFileError) as error:
+        inspect_statement(b"%PDF-1.7\nplaceholder", "many-tables.pdf")
+    assert error.value.code == "PDF_TABLE_LIMIT_EXCEEDED"
+
+
+def test_pdf_extracted_row_limit_is_enforced(monkeypatch):
+    class FakePage:
+        def extract_text(self):
+            return "Date Amount Currency Direction"
+
+        def extract_tables(self):
+            return [
+                [["D", "A", "C", "T"]]
+                + [["D", "1", "X", "I"] for _ in range(MAX_IMPORT_ROWS + 1)]
+            ]
+
+    class FakePdf:
+        pages = [FakePage()]
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    monkeypatch.setattr(
+        "sme_financial_dashboard.domain.import_parsing.pdfplumber.open",
+        lambda *_args, **_kwargs: FakePdf(),
+    )
+    with pytest.raises(ImportFileError) as error:
+        inspect_statement(b"%PDF-1.7\nplaceholder", "too-many-rows.pdf")
+    assert error.value.code == "ROW_LIMIT_EXCEEDED"
