@@ -2,15 +2,27 @@
 
 from __future__ import annotations
 
+import hashlib
+
 import streamlit as st
 from sme_financial_dashboard.config import Settings
 from sme_financial_dashboard.db.models import BootstrapState, MembershipRole
+from sme_financial_dashboard.domain.import_parsing import (
+    ImportFileError,
+    list_xlsx_worksheets,
+)
 from sme_financial_dashboard.db.session import build_engine, build_session_factory
 from sme_financial_dashboard.security.company_scope import (
+    resolve_company_context,
     resolve_workspace_context,
 )
 from sme_financial_dashboard.services.auth_service import AuthService, AuthenticationError
 from sme_financial_dashboard.services.workspace_service import WorkspaceError, WorkspaceService
+from sme_financial_dashboard.services.import_service import (
+    ImportMapping,
+    ImportService,
+    ImportServiceError,
+)
 
 st.set_page_config(page_title="SME Financial Dashboard", page_icon="📊", layout="wide")
 
@@ -288,3 +300,265 @@ with col_b:
                             st.error(str(exc))
     else:
         st.caption("Only workspace ADMIN can manage members.")
+
+
+# Phase 3 — company-scoped statement import workflow.
+if companies:
+    st.divider()
+    st.subheader("Import financial transactions")
+    if workspace_context.role not in {MembershipRole.ADMIN, MembershipRole.ACCOUNTANT}:
+        st.info("Your VIEWER role allows consultation and export, not financial imports.")
+    else:
+        uploaded_file = st.file_uploader(
+            "Upload a bank or cash statement (.csv, .xlsx or digital .pdf)",
+            type=["csv", "xlsx", "pdf"],
+            key=f"statement_upload_{chosen}",
+        )
+        if uploaded_file is not None:
+            file_bytes = uploaded_file.getvalue()
+            file_digest = hashlib.sha256(file_bytes).hexdigest()
+            suffix = uploaded_file.name.lower().rsplit(".", maxsplit=1)[-1]
+            delimiter = ","
+            encoding = "utf-8-sig"
+            worksheet_name = None
+            if suffix == "csv":
+                delimiter_label = st.selectbox(
+                    "CSV delimiter",
+                    options=[",", ";", "Tab", "|"],
+                    format_func=lambda value: "Tab" if value == "Tab" else value,
+                    key=f"csv_delimiter_{chosen}",
+                )
+                delimiter = "\t" if delimiter_label == "Tab" else delimiter_label
+                encoding = st.selectbox(
+                    "CSV encoding",
+                    options=["utf-8-sig", "utf-8", "cp1252", "latin-1"],
+                    key=f"csv_encoding_{chosen}",
+                )
+            elif suffix == "xlsx":
+                try:
+                    worksheets = list_xlsx_worksheets(file_bytes)
+                    worksheet_name = st.selectbox(
+                        "Worksheet",
+                        options=list(worksheets),
+                        key=f"xlsx_sheet_{chosen}",
+                    )
+                except ImportFileError as exc:
+                    st.error(f"{exc.code}: {exc.message}")
+                    worksheets = ()
+            date_format_label = st.selectbox(
+                "Date format in source",
+                options=["DD/MM/YYYY", "YYYY-MM-DD", "MM/DD/YYYY"],
+                index=0,
+                key=f"date_format_{chosen}",
+            )
+            date_format = {
+                "DD/MM/YYYY": "%d/%m/%Y",
+                "YYYY-MM-DD": "%Y-%m-%d",
+                "MM/DD/YYYY": "%m/%d/%Y",
+            }[date_format_label]
+            decimal_separator = st.selectbox(
+                "Decimal separator",
+                options=[",", "."],
+                index=0,
+                key=f"decimal_separator_{chosen}",
+            )
+            default_thousands = "." if decimal_separator == "," else ","
+            thousands_choice = st.selectbox(
+                "Thousands separator",
+                options=["None", default_thousands],
+                index=1,
+                key=f"thousands_separator_{chosen}",
+            )
+            thousands_separator = None if thousands_choice == "None" else thousands_choice
+
+            parsed_document = None
+            if suffix != "xlsx" or worksheet_name is not None:
+                try:
+                    parsed_document = ImportService.inspect_file(
+                        file_bytes,
+                        uploaded_file.name,
+                        delimiter=delimiter,
+                        encoding=encoding,
+                        worksheet_name=worksheet_name,
+                    )
+                    st.caption(
+                        f"Detected {parsed_document.file_type} · "
+                        f"{len(parsed_document.rows):,} extracted rows · "
+                        f"{len(parsed_document.headers)} columns"
+                    )
+                except (ImportFileError, ImportServiceError) as exc:
+                    st.error(str(exc))
+
+            if parsed_document is not None:
+                header_options = list(range(len(parsed_document.headers)))
+                no_column_label = "— Not mapped —"
+
+                def _column_selector(label: str, field_key: str, required: bool = False):
+                    options = header_options if required else [None, *header_options]
+                    return st.selectbox(
+                        label,
+                        options=options,
+                        format_func=lambda value: (
+                            no_column_label
+                            if value is None
+                            else f"{value + 1}. {parsed_document.headers[value]}"
+                        ),
+                        key=f"mapping_{field_key}_{chosen}",
+                    )
+
+                with st.form(f"import_mapping_form_{chosen}"):
+                    st.caption("Map each financial field to a source column. Required fields are marked *. ")
+                    date_column = _column_selector("Transaction date *", "date", True)
+                    amount_column = _column_selector("Amount *", "amount", True)
+                    currency_column = _column_selector("Currency *", "currency", True)
+                    direction_mode = st.radio(
+                        "Direction interpretation",
+                        options=["column", "signed_amount"],
+                        format_func=lambda value: (
+                            "Use a source direction column" if value == "column"
+                            else "Infer direction from positive/negative amount"
+                        ),
+                        horizontal=True,
+                    )
+                    direction_column = (
+                        _column_selector("Direction *", "direction", True)
+                        if direction_mode == "column"
+                        else None
+                    )
+                    value_date_column = _column_selector("Value date", "value_date")
+                    description_column = _column_selector("Description", "description")
+                    counterparty_column = _column_selector("Counterparty", "counterparty")
+                    reference_column = _column_selector("Transaction reference", "reference")
+                    account_column = _column_selector("Account name", "account_name")
+                    build_preview = st.form_submit_button("Build import preview", type="primary")
+
+                if build_preview:
+                    columns = {
+                        "transaction_date": date_column,
+                        "amount": amount_column,
+                        "currency": currency_column,
+                    }
+                    if direction_column is not None:
+                        columns["direction"] = direction_column
+                    optional_columns = {
+                        "value_date": value_date_column,
+                        "description": description_column,
+                        "counterparty": counterparty_column,
+                        "reference": reference_column,
+                        "account_name": account_column,
+                    }
+                    columns.update({key: value for key, value in optional_columns.items() if value is not None})
+                    mapping = ImportMapping(
+                        columns=columns,
+                        direction_mode=direction_mode,
+                        date_format=date_format,
+                        decimal_separator=decimal_separator,
+                        thousands_separator=thousands_separator,
+                        delimiter=delimiter,
+                        encoding=encoding,
+                        worksheet_name=worksheet_name,
+                    )
+                    try:
+                        with session_factory() as db, db.begin():
+                            company_context = resolve_company_context(
+                                db, user_id=user.id, company_id=chosen
+                            )
+                            preview = ImportService.preview(
+                                db,
+                                file_bytes=file_bytes,
+                                file_name=uploaded_file.name,
+                                mapping=mapping,
+                                context=company_context,
+                            )
+                        st.session_state["import_preview"] = preview
+                        st.session_state["import_preview_company"] = str(chosen)
+                        st.success("Preview created. No financial transactions have been committed yet.")
+                    except ImportServiceError as exc:
+                        st.error(str(exc))
+                    except PermissionError:
+                        st.error("You are not authorized to import into this company.")
+
+                current_preview = st.session_state.get("import_preview")
+                preview_company = st.session_state.get("import_preview_company")
+                if current_preview is not None and (
+                    preview_company != str(chosen)
+                    or current_preview.file_sha256 != file_digest
+                ):
+                    st.session_state.pop("import_preview", None)
+                    st.session_state.pop("import_preview_company", None)
+                    current_preview = None
+
+                if current_preview is not None:
+                    st.markdown("**Import preview summary**")
+                    metric_cols = st.columns(5)
+                    for column, label, value in zip(
+                        metric_cols,
+                        ["Valid", "Invalid", "Duplicate", "Review", "Blank"],
+                        [
+                            current_preview.valid_count,
+                            current_preview.invalid_count,
+                            current_preview.duplicate_count,
+                            current_preview.review_count,
+                            current_preview.blank_count,
+                        ],
+                        strict=True,
+                    ):
+                        column.metric(label, value)
+                    if current_preview.sample_rows:
+                        st.dataframe(
+                            [
+                                {
+                                    "Source row": row.source_row_number,
+                                    "Status": row.status,
+                                    "Values": row.values,
+                                    "Issues": [issue["code"] for issue in row.issues],
+                                    "PDF page": row.source_page_number,
+                                    "PDF table": row.source_table_index,
+                                }
+                                for row in current_preview.sample_rows
+                            ],
+                            use_container_width=True,
+                            hide_index=True,
+                        )
+                    has_held_rows = bool(
+                        current_preview.invalid_count
+                        or current_preview.duplicate_count
+                        or current_preview.review_count
+                    )
+                    partial_confirmed = False
+                    if has_held_rows:
+                        partial_confirmed = st.checkbox(
+                            "I confirm importing only valid rows; INVALID, DUPLICATE and REVIEW rows will remain excluded.",
+                            key=f"partial_confirm_{current_preview.preview_id}",
+                        )
+                    if current_preview.valid_count == 0:
+                        st.warning("There are no valid rows to commit. Resolve the preview issues or upload another file.")
+                    elif st.button(
+                        f"Confirm import of {current_preview.valid_count} valid rows",
+                        type="primary",
+                        disabled=has_held_rows and not partial_confirmed,
+                        key=f"commit_import_{current_preview.preview_id}",
+                    ):
+                        try:
+                            with session_factory() as db, db.begin():
+                                company_context = resolve_company_context(
+                                    db, user_id=user.id, company_id=chosen
+                                )
+                                summary = ImportService.commit(
+                                    db,
+                                    preview_id=current_preview.preview_id,
+                                    context=company_context,
+                                    confirm=True,
+                                    confirm_partial=partial_confirmed,
+                                )
+                            st.success(
+                                f"Import completed: {summary.imported_count} transactions committed. "
+                                f"Batch status: {summary.status}."
+                            )
+                            st.session_state.pop("import_preview", None)
+                            st.session_state.pop("import_preview_company", None)
+                            st.rerun()
+                        except ImportServiceError as exc:
+                            st.error(str(exc))
+                        except PermissionError:
+                            st.error("You are no longer authorized to import into this company.")

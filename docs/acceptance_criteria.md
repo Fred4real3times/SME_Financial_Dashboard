@@ -89,7 +89,7 @@ Product acceptance IDs AC-01..AC-06, IMP, FIN, CAT, EXP, AUD, SEC, OPS and PDF r
 - WS-04 New user/member provision and role changes are audited; inactive membership loses access without physical deletion.
 - WS-05 The last active ADMIN cannot be demoted or deactivated.
 - WS-06 All workspace/company lists and company selection are membership-scoped and checked server-side.
-These criteria remain BLOCKED until CI/local test evidence for the Phase 2 branch is recorded.
+Phase 2 CI evidence: PASS on commit 1dd3367d85c3f320d2685ab38f9885a55a2c3635, run 42619664693. Python 3.11, 3.12 and 3.13 each passed Ruff, 54 tests, Alembic round-trip and SQLite foreign_key_check.
 
 
 ## CI gate
@@ -98,3 +98,17 @@ A green GitHub Actions run for the tested commit is required before a phase is r
 
 ## Phase 2 review note
 The first CI run identified Ruff findings (unused imports, an unused test variable and a forward-reference annotation). These were corrected in the follow-up commit. The lint profile was narrowed to correctness/security-adjacent rules rather than enforcing import layout and line-length style at this stage.
+
+
+## Phase 3 implementation tests — in progress
+- IMP-12 Upload extension and content signature must agree; malformed/oversized/archive-expansion and PDF page/row-limit input must fail with stable issue codes.
+- IMP-13 CSV encoding/delimiter, XLSX worksheet, date format and decimal/thousands separators are explicit; no locale inference.
+- IMP-14 XLSX formulas/macros are never executed; formula cells are rejected.
+- IMP-15 Preview stores staging metadata and source rows only; no Transaction exists before confirmation.
+- IMP-16 Confirmed partial commit links only VALID/VALID_WITH_WARNING rows to Transactions atomically; REVIEW, INVALID and DUPLICATE remain unlinked and excluded from transaction queries.
+- IMP-17 Referenced re-imports are strict duplicates; matching rows without a unique reference enter REVIEW.
+- IMP-18 PDF import retains page/table/row provenance; scanned/image-only, encrypted, malformed, unsupported and ambiguous PDFs fail safely.
+- IMP-19 Import preview and commit are authorized against a freshly resolved CompanyContext; VIEWER and cross-company contexts are denied.
+Phase 3 CI evidence: PASS on branch-head commit 64e50231bf228e251fb529b20655b89eba62b6cf, run 42621129042. Python 3.11, 3.12 and 3.13 each passed Ruff, 76 tests, Alembic round-trip and SQLite foreign_key_check.
+
+Automated coverage includes CSV parsing/validation, XLSX worksheet selection and formula rejection, digital PDF table extraction and page/table provenance through commit, scanned-PDF rejection, Decimal/fingerprint normalization, staging without transaction writes, explicit partial commit, duplicates/REVIEW, field-length validation, workspace-role enforcement and cross-company denial. Resource-limit enforcement is implemented; the full set of negative archive-expansion/PDF-page/encrypted/ambiguous-layout tests is not yet exhaustive. A manual Streamlit browser smoke test and independent workflow/security review remain open, so the acceptance gate remains open until those checks are completed.

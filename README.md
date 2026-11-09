@@ -77,3 +77,13 @@ Phase 2 adds first-run ADMIN bootstrap, Argon2id password hashing, HMAC-signed s
 6. Sign in. The ADMIN can create companies and manage members/roles from Workspace Management.
 
 Sessions are opaque HMAC-SHA256 signed tokens held in Streamlit server-side session state and backed by revocable database records. They expire after `SESSION_TTL_HOURS` (default 12 hours); logout revokes the current session. This is not an external SSO or persistent browser-cookie integration. In production, use a unique secret of at least 32 characters and protect the host/database.
+
+
+## Statement import (Phase 3)
+The import workflow accepts CSV, XLSX and digital/text-based PDF statements. Uploads are capped at 10 MiB both in Streamlit and in the parser; XLSX archive expansion at 50 MiB; PDF files at 100 pages; and extracted data at 10,000 rows. CSV delimiter/encoding, XLSX worksheet, date format, decimal and thousands separators and direction convention are explicitly selected. XLSX formula cells are rejected; macros are not run. Scanned/image-only or encrypted PDFs are unsupported (no OCR).
+
+The preview stores sanitized staging rows only. No financial transaction is created until the user confirms the import. A separate partial-import confirmation is required when invalid, duplicate or REVIEW rows are present. Only valid rows are committed; ambiguous reference-less matches remain in REVIEW. Imported amounts are Decimal, positive, and never automatically converted between currencies.
+
+
+### Verification snapshot
+Phase 3 branch head 64e50231bf228e251fb529b20655b89eba62b6cf passed GitHub Actions run 42621129042 on Python 3.11, 3.12 and 3.13 (76 tests per version, Ruff and migration round-trip). The branch is delivered as draft PR #2 stacked on Phase 2; it is not merged into main. Manual browser smoke testing remains part of final QA.

@@ -104,3 +104,14 @@ Local evidence: `PYTHONPATH=src pytest -q` → 33 passed; Alembic fresh upgrade,
 
 ## Phase 2 review corrections
 Workspace service inputs now normalize invalid values into explicit WorkspaceError responses for the Streamlit layer. Role updates coerce and validate the role enum before mutation. The CI lint profile checks correctness-focused Ruff rules (F, B, UP); import/line-length presentation rules are not configured as release gates in this phase.
+
+
+## Phase 3 import implementation defaults — 2026-11-09
+- Upload ceiling: 10 MiB; XLSX expanded archive ceiling: 50 MiB and maximum compression ratio 200:1; PDF maximum 100 pages; maximum 10,000 extracted data rows; preview table shows at most 20 rows.
+- Accept only .csv, .xlsx and .pdf; reject mismatched signatures. XLSX must be a valid ZIP-based workbook; .xls/.xlsm are unsupported. Formula cells are rejected, never evaluated. Macro execution and external links are not enabled.
+- CSV encodings are explicitly selected from UTF-8 BOM, UTF-8, Windows-1252 and Latin-1; delimiter is explicitly selected. XLSX sheet is explicitly selected when multiple sheets exist.
+- Required mapping: transaction date, amount and currency; direction is either a mapped direction column or an explicitly selected signed-amount convention. Date format, decimal and thousands separators are user-selected. No locale guessing or silent rounding.
+- Import preview persists sanitized ImportBatch/ImportRow staging data and a preview audit event; it does not create Transaction records. Only a separate explicit confirmation can commit VALID/VALID_WITH_WARNING rows. If INVALID/DUPLICATE/REVIEW rows exist, a second explicit partial-import confirmation is required. REVIEW rows remain staged with no transaction link.
+- Fingerprint v1 uses company, transaction date, normalized amount, currency, direction, normalized reference and normalized counterparty. Text uses Unicode NFKC, whitespace collapse and casefold. Duplicate referenced rows are DUPLICATE; matching rows without a unique reference are REVIEW.
+- PDF supports digital table extraction, with text-line fallback only where stable multi-column text is detectable. Each PDF-derived row stores page/table/row provenance. Scanned/image-only, encrypted, unstructured or ambiguous PDFs fail safely; no OCR, embedded-file extraction or PDF JavaScript execution.
+- Outlier count remains zero in the first import vertical; the IQR warning threshold and minimum sample policy require a separate explicit product decision before outlier labels are enabled.
