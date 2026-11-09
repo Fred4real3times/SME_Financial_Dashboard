@@ -102,8 +102,12 @@ def test_review_queue_is_company_scoped_and_viewer_cannot_access(session):
     preview = _review_preview(session, context)
     queue = ReviewService.list_pending(session, context)
     assert len(queue) == 2
+    assert ReviewService.count_pending(session, context) == 2
+    assert len(ReviewService.list_pending(session, context, limit=1, offset=1)) == 1
     assert {item.batch_id for item in queue} == {preview.preview_id}
     assert {item.file_name for item in queue} == {"ambiguous.csv"}
+    with pytest.raises(ReviewResolutionError, match="limit must be an integer"):
+        ReviewService.list_pending(session, context, limit=501)
 
     viewer_workspace, viewer, viewer_company = seed_workspace(
         session,

@@ -295,3 +295,51 @@ def test_cross_company_category_cannot_be_attached_to_a_rule(session):
             operator=MatchOperator.CONTAINS,
             match_value="foreign",
         )
+
+
+
+def test_rule_update_validates_before_mutation_and_audits_changes(session):
+    _workspace, _user, _company, context = _context(session, suffix="rule-update")
+    category = CategoryService.create_category(session, context, name="Office")
+    rule = CategorizationRuleService.create_rule(
+        session,
+        context,
+        category_id=category.id,
+        match_field=MatchField.KEYWORD,
+        operator=MatchOperator.CONTAINS,
+        match_value="office",
+        priority=100,
+    )
+    with pytest.raises(CategorizationError, match="is_active must be a boolean"):
+        CategorizationRuleService.update_rule(
+            session,
+            context,
+            rule_id=rule.id,
+            match_value="changed",
+            priority=200,
+            is_active="no",
+        )
+    session.refresh(rule)
+    assert rule.match_value == "office"
+    assert rule.priority == 100
+    assert rule.is_active is True
+
+    updated = CategorizationRuleService.update_rule(
+        session,
+        context,
+        rule_id=rule.id,
+        match_value="office supplies",
+        priority=200,
+        is_active=False,
+    )
+    assert updated.match_value == "office supplies"
+    assert updated.priority == 200
+    assert updated.is_active is False
+    event = session.scalar(
+        select(AuditEvent).where(
+            AuditEvent.entity_id == rule.id,
+            AuditEvent.action == "CATEGORIZATION_RULE_UPDATED",
+        )
+    )
+    assert event.before_json["priority"] == 100
+    assert event.after_json["priority"] == 200
