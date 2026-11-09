@@ -5,9 +5,13 @@ from io import BytesIO
 import pytest
 from openpyxl import Workbook
 from reportlab.lib import colors
+from reportlab.pdfgen import canvas
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle
 
 from sme_financial_dashboard.domain.import_parsing import (
+    MAX_IMPORT_COLUMNS,
+    MAX_IMPORT_ROWS,
+    MAX_PDF_PAGES,
     MAX_UPLOAD_BYTES,
     ImportFileError,
     inspect_statement,
@@ -120,3 +124,62 @@ def test_parser_rejects_upload_above_ten_mib_limit():
     with pytest.raises(ImportFileError) as error:
         inspect_statement(b"x" * (MAX_UPLOAD_BYTES + 1), "oversized.csv")
     assert error.value.code == "FILE_TOO_LARGE"
+
+
+
+def _encrypted_pdf() -> bytes:
+    output = BytesIO()
+    page = canvas.Canvas(output, encrypt="unit-test-password")
+    page.drawString(72, 720, "Confidential statement")
+    page.showPage()
+    page.save()
+    return output.getvalue()
+
+
+def _pdf_with_pages(page_count: int) -> bytes:
+    output = BytesIO()
+    page = canvas.Canvas(output)
+    for number in range(page_count):
+        page.drawString(72, 720, f"Page {number + 1}")
+        page.showPage()
+    page.save()
+    return output.getvalue()
+
+
+def test_csv_row_limit_is_enforced_while_streaming():
+    header = b"Date,Amount,Currency,Direction\n"
+    row = b"2026-01-01,1.00,XAF,INFLOW\n"
+    content = header + row * (MAX_IMPORT_ROWS + 1)
+    with pytest.raises(ImportFileError) as error:
+        inspect_statement(content, "large.csv")
+    assert error.value.code == "ROW_LIMIT_EXCEEDED"
+
+
+def test_csv_column_limit_is_enforced():
+    header = ",".join(f"Column {index}" for index in range(MAX_IMPORT_COLUMNS + 1))
+    with pytest.raises(ImportFileError) as error:
+        inspect_statement(header.encode(), "wide.csv")
+    assert error.value.code == "COLUMN_LIMIT_EXCEEDED"
+
+
+def test_xlsx_column_limit_is_enforced():
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.append([f"Column {index}" for index in range(MAX_IMPORT_COLUMNS + 1)])
+    output = BytesIO()
+    workbook.save(output)
+    with pytest.raises(ImportFileError) as error:
+        inspect_statement(output.getvalue(), "wide.xlsx")
+    assert error.value.code == "COLUMN_LIMIT_EXCEEDED"
+
+
+def test_encrypted_pdf_has_stable_unsupported_error_code():
+    with pytest.raises(ImportFileError) as error:
+        inspect_statement(_encrypted_pdf(), "encrypted.pdf")
+    assert error.value.code == "PDF_ENCRYPTED"
+
+
+def test_pdf_page_limit_is_enforced():
+    with pytest.raises(ImportFileError) as error:
+        inspect_statement(_pdf_with_pages(MAX_PDF_PAGES + 1), "too-many-pages.pdf")
+    assert error.value.code == "PDF_PAGE_LIMIT_EXCEEDED"

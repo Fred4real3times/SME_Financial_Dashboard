@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 import pdfplumber
+from pdfminer.pdfdocument import PDFPasswordIncorrect
 from openpyxl import load_workbook
 
 MAX_UPLOAD_BYTES = 10 * 1024 * 1024
@@ -353,4 +354,15 @@ def inspect_statement(
     except ImportFileError:
         raise
     except Exception as exc:
+        if any(isinstance(argument, PDFPasswordIncorrect) for argument in exc.args):
+            raise ImportFileError(
+                "PDF_ENCRYPTED",
+                "Password-protected PDFs are not supported in the MVP.",
+            ) from exc
+        cause = exc.__cause__
+        if isinstance(cause, PDFPasswordIncorrect):
+            raise ImportFileError(
+                "PDF_ENCRYPTED",
+                "Password-protected PDFs are not supported in the MVP.",
+            ) from exc
         raise ImportFileError("PDF_MALFORMED", "PDF could not be parsed safely.") from exc
