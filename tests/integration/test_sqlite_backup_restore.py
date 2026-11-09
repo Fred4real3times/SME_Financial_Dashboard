@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 import pytest
@@ -35,7 +36,9 @@ def _create_database(path: Path, workspace_name: str) -> None:
 
 
 def _workspace_names(path: Path) -> list[str]:
-    with sqlite3.connect(path) as connection:
+    # sqlite3.Connection's context manager commits/rolls back but does not close.
+    # Close explicitly so Windows releases the file handle before os.replace().
+    with closing(sqlite3.connect(path)) as connection:
         return [
             row[0]
             for row in connection.execute("SELECT name FROM workspaces ORDER BY name")
@@ -123,3 +126,25 @@ def test_backup_rejects_database_missing_application_tables(tmp_path: Path):
         create_sqlite_backup(incomplete, backup)
 
     assert not backup.exists()
+
+def test_replace_permission_error_explains_database_lock_and_cleans_temp_file(
+    tmp_path: Path, monkeypatch
+):
+    import sme_financial_dashboard.ops.sqlite_backup as backup_module
+
+    source = tmp_path / "source.db"
+    destination = tmp_path / "locked.db"
+    _create_database(source, "Source workspace")
+    _create_database(destination, "Destination workspace")
+
+    def deny_replace(_source, _destination):
+        raise PermissionError("file is in use")
+
+    monkeypatch.setattr(backup_module.os, "replace", deny_replace)
+
+    with pytest.raises(SQLiteBackupError, match="Close Streamlit"):
+        create_sqlite_backup(source, destination, overwrite=True)
+
+    assert not list(tmp_path.glob(".locked.db.*.partial"))
+    assert _workspace_names(destination) == ["Destination workspace"]
+

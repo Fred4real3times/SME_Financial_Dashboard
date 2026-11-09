@@ -146,6 +146,12 @@ def _copy_database(
     except sqlite3.Error as exc:
         temp_path.unlink(missing_ok=True)
         raise SQLiteBackupError(f"SQLite copy or verification failed: {exc}") from exc
+    except OSError as exc:
+        temp_path.unlink(missing_ok=True)
+        raise SQLiteBackupError(
+            "Could not atomically publish the SQLite file. Close Streamlit and any other "
+            "program using the destination database, then check folder write permissions."
+        ) from exc
     except Exception:
         temp_path.unlink(missing_ok=True)
         raise
