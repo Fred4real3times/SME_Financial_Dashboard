@@ -31,3 +31,10 @@ Can transactions split categories? Proposal no. Dedicated Account entity? Propos
 
 ## Decision addendum — 2026-11-09
 Accepted schema implications: WorkspaceMembership is the access anchor for multi-company access. Soft deletion requires transaction lifecycle metadata (preferred explicit `deleted_at`, `deleted_by_user_id`, `deletion_reason`; `is_active` may be derived or retained for query convenience) and an AuditEvent; do not physically delete the transaction or its ImportRow. ImportRow must support a REVIEW status and structured issue/review reason; staged ambiguous rows must not have a committed transaction_id. Add review resolution metadata (reviewed_by, reviewed_at, resolution/status) if approved. Open: role scope (workspace-wide or per-company), restore permissions/semantics, partial batch commit, and exact review resolutions.
+
+## Final owner decisions — 2026-11-09
+- WorkspaceMembership.role is the single role authority for the member and applies to all companies in that workspace; no company-specific role override in MVP.
+- Transaction soft-delete metadata is required (deleted_at, deleted_by_user_id, deletion_reason; active status may be derived). ADMIN and ACCOUNTANT may delete; ADMIN alone may restore. All transitions audited.
+- ImportRow must support REVIEW state and resolution metadata. Partial import is explicit opt-in at confirmation: VALID rows are committed atomically; REVIEW rows remain staged without Transaction linkage until resolved. Invalid and duplicate rows are not imported.
+- Identical normalized business rows without a unique reference are REVIEW, not auto-deduplicated.
+- Transaction.category_id is a single nullable primary category FK. No split-category/allocation table in MVP.
