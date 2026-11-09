@@ -19,7 +19,7 @@ Category CRUD, deterministic rules/conflict handling, manual correction and befo
 ## Phase 5 — Dashboard [COMPLETE — automated CI; manual browser smoke test outstanding]
 Canonical filters; inflow/outflow/net; conditional balances; monthly charts, top spend/counterparties and period comparison; independent Decimal reconciliation. Exit AC-04.
 
-## Phase 6 — Exports and history [IN PROGRESS]
+## Phase 6 — Exports and history [AUTOMATED TESTS PASS ON FOLLOW-UP PR; MAIN FIX PENDING]
 CSV/PDF from the same company-scoped DashboardFilters; CSV formula-injection defense; import-batch/row history; company audit history; export history/audit events; bounded export size and pagination. Exit AC-05 after backend and UI tests.
 
 ## Phase 7 — Synthetic data and QA
@@ -157,8 +157,14 @@ Automated evidence: commit \`62eb759f2c5c480a7b7385d6939d1d7377bc398e\`, PR #6 C
 - VIEWER may export and inspect import history, but cannot inspect the audit log. No schema migration is required.
 
 ## Phase 6 remaining validation
-Automated tests must cover CSV formula injection, exact filters, tenant isolation, viewer export permission, row limits, valid PDF generation/content, batch/row provenance, audit pagination and authorization. Manual browser validation remains outstanding.
+Automated tests cover CSV formula injection, dashboard filter reuse, tenant isolation, viewer export permission, row limits, valid PDF generation/content, batch/row provenance, audit pagination and authorization. CI run `42647719755` on PR #10 commit `e016434ce5a1fe0cf447f184cee1701e532bbd67` passed Ruff, 136 tests, Alembic round-trip and SQLite foreign_key_check on Python 3.11/3.12/3.13. This evidence is for the follow-up branch; PR #10 must be merged before the corrections are part of `main`. Manual browser visual validation and independent security review remain outstanding.
 
 
 ## Phase 6 CI follow-up — 2026-11-09
 The merged Phase 6 commit was followed by a matrix run that exposed a UI smoke assertion mismatch: the automated test expected an explicit "Audit trail" subheader while the interface rendered the label as bold Markdown "Audit history". The 135 other tests passed on all tested Python versions; this follow-up makes the audit heading explicit and retains the smoke-test expectation. It also removes Ruff UP012 in the export state-key hashing expression. Revalidation is required on the exact follow-up PR head.
+
+
+## Phase 6 CI evidence on follow-up PR — 2026-11-09
+- PR #8 was merged at \`83505c16d5bc71cc194e06ce92ff8a871967a602\` while its first merged-head CI did not pass. A subsequent matrix run exposed UI heading expectation and test-fixture expectation defects; the follow-up PR #10 corrects them and removes Ruff UP012 in \`app.py\`.
+- Follow-up head \`e016434ce5a1fe0cf447f184cee1701e532bbd67\`, GitHub Actions run \`42647719755\`: Python 3.11, 3.12 and 3.13 all pass Ruff, 136 tests, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign_key_check.
+- This is automated branch evidence. The merged \`main\` remains at the earlier Phase 6 commit until follow-up PR #10 is merged.

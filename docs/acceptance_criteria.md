@@ -148,15 +148,22 @@ The import-engine automated acceptance tests are **PASS** on final QA branch hea
 
 
 ## Phase 6 export and history acceptance criteria — implementation in progress
-- EXP-01 CSV export applies the same inclusive dates, currency, account, category and direction filters as the dashboard.
-- EXP-02 CSV export is company-scoped and excludes unvalidated and soft-deleted transactions.
-- EXP-03 CSV output neutralizes spreadsheet formula prefixes even after leading whitespace/control characters, for all user-controlled text columns.
-- EXP-04 PDF export is a valid PDF, includes company/filter metadata, per-currency cash-flow totals and only filtered transaction rows.
-- EXP-05 CSV/PDF exports enforce a bounded maximum row count using a SQL-side row limit.
-- EXP-06 Preparing an export writes a company-scoped audit event with filters, format and row count without duplicating transaction details.
-- HIS-01 Import batch history lists only batches in the active company and exposes file type, extraction method, status and row counters.
-- HIS-02 Import row history preserves source row/page/table provenance, status, issues and review outcome; rows of another company's batch cannot be queried.
-- AUD-01 Audit history is company-scoped, ordered and paginated.
-- AUD-02 Only ADMIN/ACCOUNTANT can inspect audit history; VIEWER can still export and inspect permitted import history.
-- AUD-03 Audit UI shows event metadata without dumping sensitive before/after JSON payloads.
+- EXP-01 PASS — exact DashboardFilters object is constructed once and consumed by both dashboard report and export; CSV integration tests.
+- EXP-02 PASS — CSV/PDF filtered-row, tenant, unvalidated and soft-delete integration tests.
+- EXP-03 PASS — formula prefix utility and CSV integration tests cover all user-controlled text columns and leading control/whitespace patterns.
+- EXP-04 PASS — PDF validity, extracted content and filtered-company-row integration test.
+- EXP-05 PASS — SQL-side MAX_EXPORT_ROWS + 1 cap and export safety-limit integration test.
+- EXP-06 PASS — export audit event records filters/format/count; integration tests.
+- HIS-01 PASS — company-scoped batch listing and status/counter fields; integration tests.
+- HIS-02 PASS — row provenance/raw/normalized/issues/review metadata and cross-company batch denial; integration tests.
+- AUD-01 PASS — company-scoped ordered/paginated audit events; integration tests.
+- AUD-02 PASS — ADMIN/ACCOUNTANT audit permission, VIEWER denial and VIEWER export/import-history access tests.
+- AUD-03 PASS — Streamlit smoke test plus code path displays audit metadata only, not before/after JSON payloads.
 - Current implementation branch and CI evidence will be recorded after tests pass. Manual browser review remains separate.
+
+
+Phase 6 automated evidence (follow-up branch, not yet integrated into main):
+- PR #10 head \`e016434ce5a1fe0cf447f184cee1701e532bbd67\`.
+- GitHub Actions run [42647719755](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42647719755) passed Python 3.11/3.12/3.13: Ruff, 136 tests per version, Alembic round-trip and SQLite foreign_key_check.
+- The earlier Phase 6 merge commit has a failing first matrix run; PR #10 contains the corresponding CI/UI expectation correction. Do not consider the merged main branch fully green until PR #10 is integrated and a post-merge CI run passes.
+- Manual browser visual validation and independent security review remain outstanding.
