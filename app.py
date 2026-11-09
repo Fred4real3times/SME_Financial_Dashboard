@@ -207,19 +207,19 @@ with col_b:
             except WorkspaceError as exc:
                 st.error(str(exc))
 
-        with st.form("create_workspace_form"):
-            new_workspace_name = st.text_input("Create another workspace")
-            create_workspace = st.form_submit_button("Create workspace")
-        if create_workspace:
-            try:
-                with session_factory() as db, db.begin():
-                    WorkspaceService.create_workspace(
-                        db, actor_user_id=user.id, name=new_workspace_name
-                    )
-                st.success("Workspace created; you are its ADMIN.")
-                st.rerun()
-            except WorkspaceError as exc:
-                st.error(str(exc))
+    with st.form("create_workspace_form"):
+        new_workspace_name = st.text_input("Create another workspace")
+        create_workspace = st.form_submit_button("Create workspace")
+    if create_workspace:
+        try:
+            with session_factory() as db, db.begin():
+                WorkspaceService.create_workspace(
+                    db, actor_user_id=user.id, name=new_workspace_name
+                )
+            st.success("Workspace created; you are its ADMIN.")
+            st.rerun()
+        except WorkspaceError as exc:
+            st.error(str(exc))
 
     st.subheader("Members")
     if workspace_context.role is MembershipRole.ADMIN:
