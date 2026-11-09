@@ -629,6 +629,159 @@ class CategorizationService:
             winning_category.id, winning_rule.id
         )
 
+
+    @staticmethod
+    def apply_rules_to_transactions(
+        session: Session,
+        context: CompanyContext,
+        *,
+        transactions: list[Transaction],
+    ) -> dict[UUID, CategorizationResult]:
+        """Apply one company rule snapshot to a batch without per-row rule queries."""
+        verified = _verified_context(session, context, Permission.MANAGE_RULES)
+        rules_with_categories = session.execute(
+            select(CategorizationRule, Category)
+            .join(
+                Category,
+                (Category.id == CategorizationRule.category_id)
+                & (Category.company_id == CategorizationRule.company_id),
+            )
+            .where(
+                CategorizationRule.company_id == verified.company_id,
+                CategorizationRule.is_active.is_(True),
+                Category.is_active.is_(True),
+            )
+            .order_by(CategorizationRule.priority.desc(), CategorizationRule.id)
+        ).all()
+        results: dict[UUID, CategorizationResult] = {}
+        for transaction in transactions:
+            if transaction.company_id != verified.company_id or transaction.deleted_at is not None:
+                raise TransactionNotFound(
+                    "Batch categorization only accepts active transactions from the verified company."
+                )
+            if transaction.id is None:
+                raise CategorizationError("Transactions must be flushed before rule categorization.")
+            if transaction.categorization_source is CategorizationSource.MANUAL:
+                results[transaction.id] = CategorizationResult(
+                    transaction.id,
+                    CategorizationOutcome.MANUAL_OVERRIDE,
+                    transaction.category_id,
+                    transaction.categorization_rule_id,
+                )
+                continue
+            matches = [
+                (rule, category)
+                for rule, category in rules_with_categories
+                if (
+                    category.kind is CategoryKind.BOTH
+                    or category.kind.value == transaction.direction.value
+                )
+                and CategorizationService._matches(rule, transaction)
+            ]
+            before = {
+                "category_id": str(transaction.category_id) if transaction.category_id else None,
+                "categorization_source": transaction.categorization_source.value,
+                "categorization_rule_id": (
+                    str(transaction.categorization_rule_id)
+                    if transaction.categorization_rule_id
+                    else None
+                ),
+            }
+            if not matches:
+                if transaction.categorization_source is CategorizationSource.RULE:
+                    transaction.category_id = None
+                    transaction.categorization_rule_id = None
+                    transaction.categorization_source = CategorizationSource.NONE
+                    _audit(
+                        session,
+                        context=verified,
+                        action="CATEGORIZATION_RULE_CLEARED",
+                        entity_type="TRANSACTION",
+                        entity_id=transaction.id,
+                        before=before,
+                        after={
+                            "category_id": None,
+                            "categorization_source": CategorizationSource.NONE.value,
+                            "categorization_rule_id": None,
+                        },
+                    )
+                results[transaction.id] = CategorizationResult(
+                    transaction.id,
+                    CategorizationOutcome.NO_MATCH,
+                    transaction.category_id,
+                    None,
+                )
+                continue
+            highest_priority = max(rule.priority for rule, _category in matches)
+            top_matches = [
+                (rule, category)
+                for rule, category in matches
+                if rule.priority == highest_priority
+            ]
+            if len(top_matches) != 1:
+                if transaction.categorization_source is CategorizationSource.RULE:
+                    transaction.category_id = None
+                    transaction.categorization_rule_id = None
+                    transaction.categorization_source = CategorizationSource.NONE
+                _audit(
+                    session,
+                    context=verified,
+                    action="CATEGORIZATION_RULE_CONFLICT",
+                    entity_type="TRANSACTION",
+                    entity_id=transaction.id,
+                    before=before,
+                    after={
+                        "outcome": CategorizationOutcome.NEEDS_REVIEW.value,
+                        "priority": highest_priority,
+                        "candidate_rule_ids": [str(rule.id) for rule, _ in top_matches],
+                    },
+                )
+                results[transaction.id] = CategorizationResult(
+                    transaction.id,
+                    CategorizationOutcome.NEEDS_REVIEW,
+                    transaction.category_id,
+                    None,
+                )
+                continue
+            winning_rule, winning_category = top_matches[0]
+            if (
+                transaction.categorization_source is CategorizationSource.RULE
+                and transaction.categorization_rule_id == winning_rule.id
+                and transaction.category_id == winning_category.id
+            ):
+                results[transaction.id] = CategorizationResult(
+                    transaction.id,
+                    CategorizationOutcome.ALREADY_APPLIED,
+                    transaction.category_id,
+                    winning_rule.id,
+                )
+                continue
+            transaction.category_id = winning_category.id
+            transaction.categorization_source = CategorizationSource.RULE
+            transaction.categorization_rule_id = winning_rule.id
+            _audit(
+                session,
+                context=verified,
+                action="CATEGORIZATION_RULE_APPLIED",
+                entity_type="TRANSACTION",
+                entity_id=transaction.id,
+                before=before,
+                after={
+                    "category_id": str(winning_category.id),
+                    "categorization_source": CategorizationSource.RULE.value,
+                    "categorization_rule_id": str(winning_rule.id),
+                },
+            )
+            results[transaction.id] = CategorizationResult(
+                transaction.id,
+                CategorizationOutcome.APPLIED,
+                winning_category.id,
+                winning_rule.id,
+            )
+        session.flush()
+        return results
+
+
     @staticmethod
     def assign_manual_category(
         session: Session,

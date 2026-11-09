@@ -39,6 +39,7 @@ from sme_financial_dashboard.domain.import_parsing import (
     inspect_statement,
 )
 from sme_financial_dashboard.domain.money import MoneyValidationError, parse_amount
+from sme_financial_dashboard.services.categorization_service import CategorizationService
 from sme_financial_dashboard.security.company_scope import (
     CompanyContext,
     resolve_company_context,
@@ -655,8 +656,11 @@ class ImportService:
                     session.add(transaction)
                     transactions.append(transaction)
                     row_transaction_links.append((row, transaction))
-                # Insert all referenced transactions first, then update source-row FKs.
+                # Insert all referenced transactions first, then apply rules in one company-scoped pass.
                 session.flush()
+                CategorizationService.apply_rules_to_transactions(
+                    session, verified, transactions=transactions
+                )
                 for row, transaction in row_transaction_links:
                     row.transaction_id = transaction.id
                 session.flush()
