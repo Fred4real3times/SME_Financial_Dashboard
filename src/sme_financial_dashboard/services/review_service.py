@@ -349,7 +349,6 @@ class ReviewService:
                     session.add(created_transaction)
                     session.flush()
                     row.normalized_values_json = corrected
-                    row.source_fingerprint = fingerprint
                     row.row_status = ImportRowStatus.VALID_WITH_WARNING
                     row.review_decision = ReviewDecision.CORRECTED_AND_ACCEPTED
                     row.transaction_id = created_transaction.id

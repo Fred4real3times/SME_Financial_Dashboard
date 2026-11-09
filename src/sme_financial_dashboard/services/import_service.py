@@ -24,6 +24,7 @@ from sme_financial_dashboard.db.models import (
     ImportMethod,
     ImportRow,
     ImportRowStatus,
+    ReviewDecision,
     Transaction,
 )
 from sme_financial_dashboard.domain.fingerprints import (
@@ -494,6 +495,7 @@ class ImportService:
 
         fingerprints = list(fingerprint_groups)
         existing: set[str] = set()
+        manually_accepted_reference_less: set[str] = set()
         # Keep each IN clause below SQLite's historical 999-parameter default.
         for offset in range(0, len(fingerprints), 500):
             fingerprint_chunk = fingerprints[offset : offset + 500]
@@ -503,6 +505,16 @@ class ImportService:
                         Transaction.company_id == verified.company_id,
                         Transaction.fingerprint_version == FINGERPRINT_VERSION,
                         Transaction.source_fingerprint.in_(fingerprint_chunk),
+                    )
+                ).all()
+            )
+            manually_accepted_reference_less.update(
+                session.scalars(
+                    select(ImportRow.source_fingerprint).where(
+                        ImportRow.company_id == verified.company_id,
+                        ImportRow.row_status == ImportRowStatus.VALID_WITH_WARNING,
+                        ImportRow.review_decision == ReviewDecision.CORRECTED_AND_ACCEPTED,
+                        ImportRow.source_fingerprint.in_(fingerprint_chunk),
                     )
                 ).all()
             )
@@ -517,6 +529,19 @@ class ImportService:
                     code = "REFERENCELESS_MATCH_EXISTING"
                     message = "A matching transaction exists but has no unique reference; manual review is required."
                 candidate.issues.append({"code": code, "message": message})
+            elif (
+                candidate.fingerprint
+                and not candidate.reference
+                and candidate.fingerprint in manually_accepted_reference_less
+            ):
+                candidate.status = ImportRowStatus.REVIEW
+                candidate.issues.append({
+                    "code": "REFERENCELESS_MATCH_MANUAL_OVERRIDE",
+                    "message": (
+                        "This source row matches a transaction previously accepted with a manual reference; "
+                        "review it again before importing."
+                    ),
+                })
 
         safe_name = _safe_file_name(file_name)
         import_batch = ImportBatch(
