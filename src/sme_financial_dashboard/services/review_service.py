@@ -315,6 +315,16 @@ class ReviewService:
                 raise ReviewResolutionError(
                     "Corrected row still matches an existing transaction; confirm it as a duplicate or correct the unique reference."
                 )
+            reference_collision = session.scalar(
+                select(Transaction.id).where(
+                    Transaction.company_id == verified.company_id,
+                    Transaction.reference == corrected["reference"],
+                )
+            )
+            if reference_collision is not None:
+                raise ReviewResolutionError(
+                    "Manual reference is already used by another transaction in this company."
+                )
         elif corrected_values is not None:
             raise ReviewResolutionError(
                 "Corrected values may only be supplied with CORRECTED_AND_ACCEPTED."
