@@ -34,10 +34,12 @@ def build_engine(database_url: str, *, echo: bool = False) -> Engine:
     return engine
 
 
-def build_session_factory(settings: Settings | None = None) -> sessionmaker[Session]:
+def build_session_factory(
+    settings: Settings | None = None, *, engine: Engine | None = None
+) -> sessionmaker[Session]:
     active_settings = settings or Settings.from_environment()
-    engine = build_engine(active_settings.database_url, echo=False)
-    return sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+    active_engine = engine or build_engine(active_settings.database_url, echo=False)
+    return sessionmaker(bind=active_engine, autoflush=False, expire_on_commit=False)
 
 
 @contextmanager

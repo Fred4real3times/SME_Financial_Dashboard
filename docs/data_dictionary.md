@@ -8,8 +8,8 @@ Currency uppercase ISO 4217 alpha-3; no implicit conversion. amount is positive 
 ## Entities
 **Workspace:** id, name(120), created_at, updated_at.
 **Company:** id, workspace_id FK, name(160), base_currency(3; display preference only), timezone IANA, is_demo, timestamps.
-**User:** id, normalized unique email, password_hash, display_name, is_active, timestamps.
-**WorkspaceMembership:** id, workspace_id FK, user_id FK, role ADMIN/ACCOUNTANT/VIEWER, created_at; unique(workspace_id,user_id).
+**User:** id, normalized unique email, password_hash (Argon2id), display_name, is_active, must_change_password, timestamps.
+**WorkspaceMembership:** id, workspace_id FK, user_id FK, role ADMIN/ACCOUNTANT/VIEWER, is_active, created_at; unique(workspace_id,user_id). Inactive membership retains history but grants no access.
 **ImportBatch:** id, company_id, uploaded_by_user_id, sanitized file_name, file_sha256, file_type CSV/XLSX/PDF, extraction_method CSV_ROWS/XLSX_SHEET/PDF_TABLE/PDF_TEXT, source_page_count nullable, parser_version nullable, versioned mapping_json, status PREVIEWED/PARTIALLY_COMMITTED/COMMITTED/FAILED/CANCELLED, total/blank/valid/invalid/duplicate/review/outlier counts, created_at, committed_at; optional company+file hash idempotency.
 **ImportRow:** id, company_id, import_batch_id (same-company composite FK), source_row_number (unique within batch), source_page_number nullable, source_table_index nullable, sanitized raw_values_json, normalized_values_json nullable, row_status BLANK/INVALID/VALID/DUPLICATE/VALID_WITH_WARNING/REVIEW, issues_json, source_fingerprint nullable, transaction_id nullable (unique same-company composite FK to Transaction), reviewed_by_user_id nullable, reviewed_at nullable, review_decision nullable (ACCEPTED/REJECTED/CONFIRMED_DUPLICATE/CORRECTED_AND_ACCEPTED), resolution_note nullable. REVIEW rows cannot have a transaction link.
 **Category:** id, company_id, name(80), normalized_name unique per company, kind INFLOW/OUTFLOW/BOTH, is_active, timestamps.
@@ -51,3 +51,9 @@ ImportBatch.file_type includes PDF. extraction_method identifies PDF_TABLE or PD
 
 ## Phase 1 implementation alignment — 2026-11-09
 The initial SQLAlchemy schema implements the entities above. `ImportRow.transaction_id` is the single optional one-to-one source-row link to a same-company Transaction; Transaction stores `import_batch_id` but not a duplicate reverse `import_row_id` field. Composite foreign keys enforce same-company ownership for import batch, category, categorization rule and import-row/transaction associations. Database checks enforce positive amounts, three-character currency fields, complete soft-delete metadata and no transaction link on a REVIEW row.
+
+
+## Phase 2 authentication entities — approved implementation detail
+**AuthSession:** id UUID, user_id FK, token_hash SHA-256 (never raw token), created_at, expires_at, nullable revoked_at, nullable last_seen_at. Index (user_id, expires_at); unique token_hash. Signed token payload contains version, session ID, user ID, expiry and nonce; token signature uses HMAC-SHA256.
+**BootstrapState:** singleton integer id constrained to 1, initial_admin_user_id unique FK, initialized_at. Inserted in the same transaction as first ADMIN, workspace and membership; its presence permanently closes first-run setup.
+User adds `must_change_password` to force newly provisioned users to replace temporary credentials. WorkspaceMembership adds `is_active` to support membership deactivation without deleting historical role/audit information.
