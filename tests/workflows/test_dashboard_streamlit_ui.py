@@ -140,7 +140,7 @@ def test_streamlit_dashboard_renders_verified_closing_balance(
         import streamlit as st
 
         st.cache_resource.clear()
-        app = AppTest.from_file("app.py", default_timeout=30)
+        app = AppTest.from_file(Path(__file__).resolve().parents[2] / "app.py", default_timeout=30)
         app.session_state["auth_token"] = token
         app.session_state["active_workspace_id"] = bootstrap.workspace.id
         app.session_state["active_company_id"] = company.id
