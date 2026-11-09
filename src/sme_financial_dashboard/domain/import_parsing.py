@@ -193,6 +193,11 @@ def inspect_statement(
                 first = next(iterator)
             except StopIteration:
                 raise ImportFileError("HEADER_MISSING", "Selected worksheet is empty.") from None
+            if any(isinstance(cell.value, str) and cell.value.startswith("=") for cell in first):
+                raise ImportFileError(
+                    "XLSX_FORMULA_UNSUPPORTED",
+                    "Formula cells are not imported; export the calculated values first.",
+                )
             header = _headers([cell.value for cell in first])
             rows = []
             if not any(_cell_text(cell.value) for cell in first):
@@ -249,12 +254,10 @@ def inspect_statement(
                     elif tuple(cleaned[0]) == headers:
                         data_rows = cleaned[1:]
                     else:
-                        if len(cleaned[0]) > len(headers) and any(cleaned[0][len(headers):]):
-                            raise ImportFileError(
-                                "PDF_TABLE_LAYOUT_AMBIGUOUS",
-                                "PDF tables use inconsistent column layouts; map or split them manually.",
-                            )
-                        data_rows = cleaned
+                        raise ImportFileError(
+                            "PDF_TABLE_LAYOUT_AMBIGUOUS",
+                            "A PDF table does not repeat the detected header; its column alignment is uncertain.",
+                        )
                     for values in data_rows:
                         if len(values) > len(headers) and any(values[len(headers):]):
                             raise ImportFileError(
@@ -292,6 +295,11 @@ def inspect_statement(
             for page_number, values in text_rows[1:]:
                 if len(rows) >= MAX_IMPORT_ROWS:
                     raise ImportFileError("ROW_LIMIT_EXCEEDED", "PDF exceeds the 10,000-row limit.")
+                if len(values) != len(headers):
+                    raise ImportFileError(
+                        "PDF_TEXT_LAYOUT_AMBIGUOUS",
+                        "PDF text rows do not have a consistent number of columns.",
+                    )
                 row_counter += 1
                 padded = tuple(values[: len(headers)]) + tuple(
                     "" for _ in range(max(0, len(headers) - len(values)))

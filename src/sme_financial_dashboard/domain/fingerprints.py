@@ -34,7 +34,7 @@ def transaction_fingerprint(
     payload = [
         str(company_id),
         transaction_date.isoformat(),
-        format(amount, "f"),
+        format(amount.normalize(), "f"),
         currency.upper(),
         direction.upper(),
         normalize_text(reference),
