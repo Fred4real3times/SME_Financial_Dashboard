@@ -85,3 +85,10 @@ The import vertical is being implemented on feat/phase-3-import-engine, stacked 
 
 ## Phase 3 CI verification — 2026-11-09
 Branch-head commit 64e50231bf228e251fb529b20655b89eba62b6cf passed GitHub Actions run 42621129042 on Python 3.11, 3.12 and 3.13. Each job passed Ruff, 76 pytest tests, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign_key_check. The Streamlit upload limit is also capped at 10 MiB through .streamlit/config.toml. PR #2 remains a draft stacked on Phase 2; no merge has occurred. Manual browser workflow testing, independent security review and exhaustive negative tests for all PDF/XLSX resource limits remain pending before marking the phase fully accepted.
+
+
+## Phase 3 QA hardening delivery — 2026-11-09
+QA found and corrected: unbounded CSV row materialization before row-limit enforcement; missing strict limits on CSV/XLSX dimensions and XLSX ZIP entry count; short PDF table rows being padded; encrypted PDF failures lacking a stable error code; missing PDF extracted-text/table count bounds; SQLite fingerprint lookup parameter scaling; and per-transaction flush overhead.
+Added automated coverage for streaming row/column boundaries, XLSX entry/expanded-size/compression-ratio boundaries, PDF encryption/pages/tables/rows/per-page and total text bounds, uneven PDF rows, 1,200-row fingerprint lookup, same-preview commit idempotency, and full rollback on a simulated concurrent fingerprint collision.
+
+The branch-head CI run for the 88-test baseline is 42623281625 on commit 8a855c2288306b4d256b89cb0f7cb177cdaa4c1c (all three Python versions green). Additional boundary tests and batched-commit performance changes must be verified on their own latest branch-head commit before creating the final Phase 3 integration PR. Manual Streamlit browser testing and external security review remain open.

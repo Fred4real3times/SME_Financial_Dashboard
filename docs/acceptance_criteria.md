@@ -100,15 +100,18 @@ A green GitHub Actions run for the tested commit is required before a phase is r
 The first CI run identified Ruff findings (unused imports, an unused test variable and a forward-reference annotation). These were corrected in the follow-up commit. The lint profile was narrowed to correctness/security-adjacent rules rather than enforcing import layout and line-length style at this stage.
 
 
-## Phase 3 implementation tests — in progress
-- IMP-12 Upload extension and content signature must agree; malformed/oversized/archive-expansion and PDF page/row-limit input must fail with stable issue codes.
-- IMP-13 CSV encoding/delimiter, XLSX worksheet, date format and decimal/thousands separators are explicit; no locale inference.
-- IMP-14 XLSX formulas/macros are never executed; formula cells are rejected.
-- IMP-15 Preview stores staging metadata and source rows only; no Transaction exists before confirmation.
-- IMP-16 Confirmed partial commit links only VALID/VALID_WITH_WARNING rows to Transactions atomically; REVIEW, INVALID and DUPLICATE remain unlinked and excluded from transaction queries.
-- IMP-17 Referenced re-imports are strict duplicates; matching rows without a unique reference enter REVIEW.
-- IMP-18 PDF import retains page/table/row provenance; scanned/image-only, encrypted, malformed, unsupported and ambiguous PDFs fail safely.
-- IMP-19 Import preview and commit are authorized against a freshly resolved CompanyContext; VIEWER and cross-company contexts are denied.
-Phase 3 CI evidence: PASS on branch-head commit 64e50231bf228e251fb529b20655b89eba62b6cf, run 42621129042. Python 3.11, 3.12 and 3.13 each passed Ruff, 76 tests, Alembic round-trip and SQLite foreign_key_check.
+## Phase 3 import engine — automated QA result
+The import-engine automated acceptance tests are **PASS** on branch head `8a855c2288306b4d256b89cb0f7cb177cdaa4c1c` (GitHub Actions run `42623281625`): Python 3.11, 3.12 and 3.13 each passed Ruff, the full test suite (88 tests), Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign_key_check. The follow-up boundary-test commit adds four additional tests and is being verified separately; do not count it as accepted until its own branch-head run is green.
 
-Automated coverage includes CSV parsing/validation, XLSX worksheet selection and formula rejection, digital PDF table extraction and page/table provenance through commit, scanned-PDF rejection, Decimal/fingerprint normalization, staging without transaction writes, explicit partial commit, duplicates/REVIEW, field-length validation, workspace-role enforcement and cross-company denial. Resource-limit enforcement is implemented; the full set of negative archive-expansion/PDF-page/encrypted/ambiguous-layout tests is not yet exhaustive. A manual Streamlit browser smoke test and independent workflow/security review remain open, so the acceptance gate remains open until those checks are completed.
+- IMP-12: allowlist/signature, malformed/oversized input, streamed row limit, column limit, XLSX ZIP entry/expansion/compression controls and PDF page/row limits — automated tests.
+- IMP-13: explicit CSV encoding/delimiter, XLSX worksheet, date format and decimal/thousands separators — automated tests and service validation.
+- IMP-14: XLSX formula cells rejected; macros are never executed — automated test and code-level check.
+- IMP-15: preview writes ImportBatch/ImportRow staging and audit only; no Transaction before confirmation — integration test.
+- IMP-16: explicit partial confirmation commits only VALID/VALID_WITH_WARNING rows atomically; REVIEW/INVALID/DUPLICATE remain unlinked — integration test and forced fingerprint-collision rollback test.
+- IMP-17: referenced duplicates are classified DUPLICATE; reference-less identical/matching rows are REVIEW — integration tests.
+- IMP-18: PDF page/table/row provenance, scanned/image-only rejection, encryption rejection and ambiguous table-width rejection — automated tests.
+- IMP-19: service-level role and CompanyContext checks reject VIEWER imports and forged cross-company contexts — integration tests.
+- IMP-20: repeated commit of the same preview is idempotent; fingerprint lookup is chunked for large batches — integration tests.
+- PDF-08: parser code only extracts PDF text/tables; no JavaScript/action execution or embedded-file extraction API is invoked — code-level review.
+
+**Still BLOCKED / not performed:** manual browser-based Streamlit smoke test (login → upload → preview → confirm → verify transaction list) and third-party penetration/security review. These do not invalidate the passing automated backend/parser tests, but full release acceptance remains open until completed.

@@ -36,10 +36,21 @@ Soft deletion is not physical erasure: retain transaction, source provenance and
 Authorization uses one workspace-wide role per membership, consistently enforced across all companies in the workspace. ADMIN and ACCOUNTANT can soft-delete; only ADMIN can restore. Deletion requires reason and produces append-only audit events. Partial imports require explicit confirmation; REVIEW rows stay quarantined and out of all financial totals until resolved. Ambiguous identical rows without reference require manual review. One primary category only; no allocation/splitting. Security tests must cover all of these transitions and role boundaries.
 
 ## PDF upload and parsing threats — approved MVP scope
-- Malformed or malicious PDF/parser abuse: allowlist .pdf, verify actual file signature/content, enforce byte/page/extracted-row/character/time limits, pin and review parser dependency, reject malformed or over-limit documents.
+- Malformed or malicious PDF/parser abuse: allowlist .pdf, verify actual file signature/content, enforce byte/page/table/row/character limits, pin and review parser dependency, reject malformed or over-limit documents. The MVP does not enforce a hard wall-clock CPU timeout; parser execution is limited to the local single-instance app and is not a public upload service.
 - Filename and MIME are untrusted; validate actual file content.
 - Encrypted/password-protected PDFs are rejected; do not request or store passwords.
 - Extract text/tables only; never execute PDF JavaScript/actions or extract/open embedded attachments.
 - Detect scanned/image-only pages with no text layer; OCR is excluded from MVP. Report unsupported pages; never fabricate transactions.
 - Unstable table alignment, split/merged cells or uncertain values require REVIEW or rejection; preserve page/table/row provenance.
 - Test renamed non-PDF, malformed/encrypted/image-only files, empty text, excessive pages, broken/split tables, repeated headers, multi-page statements and valid synthetic digital PDFs.
+
+
+## Phase 3 QA findings and residual risks — 2026-11-09
+Automated hardening added:
+- Streamed CSV row iteration and 10,000-row / 100-column ceilings.
+- XLSX limits of 1,000 ZIP entries, 50 MiB expanded size, 200:1 compression ratio and 100 columns; formula cells rejected.
+- PDF limits of 100 pages, 50 tables per page, 250,000 characters per page, 5,000,000 characters per document and 10,000 rows; encrypted PDFs and inconsistent table widths fail safely.
+- SQLite fingerprint lookup chunks of 500 and batched transaction flushes with source-row links updated only after transaction inserts flush.
+- Integration coverage for idempotent repeat commit and rollback of the whole batch on a concurrent fingerprint collision.
+
+Residuals: no hard wall-clock parser timeout or automatic cleanup/expiry for abandoned PREVIEWED batches; no external penetration test or manual browser-based Streamlit smoke test has been performed in this environment. The app is local-first and should not be exposed publicly before further operational controls and independent review.

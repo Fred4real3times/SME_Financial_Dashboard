@@ -115,3 +115,11 @@ Workspace service inputs now normalize invalid values into explicit WorkspaceErr
 - Fingerprint v1 uses company, transaction date, normalized amount, currency, direction, normalized reference and normalized counterparty. Text uses Unicode NFKC, whitespace collapse and casefold. Duplicate referenced rows are DUPLICATE; matching rows without a unique reference are REVIEW.
 - PDF supports digital table extraction, with text-line fallback only where stable multi-column text is detectable. Each PDF-derived row stores page/table/row provenance. Scanned/image-only, encrypted, unstructured or ambiguous PDFs fail safely; no OCR, embedded-file extraction or PDF JavaScript execution.
 - Outlier count remains zero in the first import vertical; the IQR warning threshold and minimum sample policy require a separate explicit product decision before outlier labels are enabled.
+
+
+## Phase 3 resource and transaction hardening — 2026-11-09
+- CSV parsing iterates the reader instead of materializing the complete row matrix; stop after 10,000 data rows. All accepted formats cap the source width at 100 columns.
+- XLSX ZIP containers allow at most 1,000 entries, 50 MiB expanded size and a 200:1 maximum compression ratio. Formula cells are rejected; workbook macros are never executed.
+- PDF ingestion is limited to 100 pages, 50 detected tables per page, 250,000 extracted characters per page, 5,000,000 extracted characters per document and 10,000 data rows. Table rows must have exactly the detected header width; ambiguous rows are rejected. Encrypted PDFs receive a stable unsupported-file error.
+- Existing-transaction fingerprint lookups are chunked in groups of 500 to remain below SQLite's historical bind-parameter limit. Import commits insert candidate transactions in a batch, flush them, then set ImportRow transaction links in a second flush, all inside the same savepoint.
+- Parser controls are resource bounds, not a hard wall-clock CPU timeout. The app remains a local, single-instance application; do not expose the upload parser as a public service without process-level resource controls and separate security review.
