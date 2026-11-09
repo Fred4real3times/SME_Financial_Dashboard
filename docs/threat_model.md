@@ -34,3 +34,12 @@ Soft deletion is not physical erasure: retain transaction, source provenance and
 
 ## Final owner decisions — 2026-11-09
 Authorization uses one workspace-wide role per membership, consistently enforced across all companies in the workspace. ADMIN and ACCOUNTANT can soft-delete; only ADMIN can restore. Deletion requires reason and produces append-only audit events. Partial imports require explicit confirmation; REVIEW rows stay quarantined and out of all financial totals until resolved. Ambiguous identical rows without reference require manual review. One primary category only; no allocation/splitting. Security tests must cover all of these transitions and role boundaries.
+
+## PDF upload and parsing threats — approved MVP scope
+- Malformed or malicious PDF/parser abuse: allowlist .pdf, verify actual file signature/content, enforce byte/page/extracted-row/character/time limits, pin and review parser dependency, reject malformed or over-limit documents.
+- Filename and MIME are untrusted; validate actual file content.
+- Encrypted/password-protected PDFs are rejected; do not request or store passwords.
+- Extract text/tables only; never execute PDF JavaScript/actions or extract/open embedded attachments.
+- Detect scanned/image-only pages with no text layer; OCR is excluded from MVP. Report unsupported pages; never fabricate transactions.
+- Unstable table alignment, split/merged cells or uncertain values require REVIEW or rejection; preserve page/table/row provenance.
+- Test renamed non-PDF, malformed/encrypted/image-only files, empty text, excessive pages, broken/split tables, repeated headers, multi-page statements and valid synthetic digital PDFs.
