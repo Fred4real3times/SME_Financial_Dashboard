@@ -335,3 +335,82 @@ def test_optional_text_over_column_length_is_invalid_not_truncated(session):
     assert preview.valid_count == 0
     assert preview.invalid_count == 1
     assert preview.sample_rows[0].issues[0]["code"] == "FIELD_TOO_LONG"
+
+
+
+def test_committing_same_preview_twice_is_idempotent(session):
+    _workspace, _user, company, context = _context(session, suffix="idempotent")
+    content = (
+        b"Date;Amount;Currency;Direction;Reference;Counterparty\n"
+        b"01/01/2026;100,00;XAF;CREDIT;IDEMP-1;Client\n"
+    )
+    preview = ImportService.preview(
+        session, file_bytes=content, file_name="bank.csv", mapping=_mapping(), context=context
+    )
+    first = ImportService.commit(
+        session, preview_id=preview.preview_id, context=context, confirm=True
+    )
+    second = ImportService.commit(
+        session, preview_id=preview.preview_id, context=context, confirm=True
+    )
+    assert first.imported_count == 1
+    assert second.imported_count == 1
+    assert second.status == "COMMITTED"
+    assert session.scalar(
+        select(func.count()).select_from(Transaction).where(Transaction.company_id == company.id)
+    ) == 1
+
+
+def test_concurrent_fingerprint_collision_rolls_back_entire_batch(session):
+    _workspace, _user, company, context = _context(session, suffix="atomic")
+    content = (
+        b"Date;Amount;Currency;Direction;Reference;Counterparty\n"
+        b"01/01/2026;100,00;XAF;CREDIT;ATOMIC-1;Client A\n"
+        b"02/01/2026;200,00;XAF;DEBIT;ATOMIC-2;Vendor B\n"
+    )
+    preview = ImportService.preview(
+        session, file_bytes=content, file_name="bank.csv", mapping=_mapping(), context=context
+    )
+    staged = session.scalars(
+        select(ImportRow)
+        .where(ImportRow.import_batch_id == preview.preview_id)
+        .order_by(ImportRow.source_row_number)
+    ).all()
+    conflicting = staged[1]
+    values = conflicting.normalized_values_json
+    session.add(
+        Transaction(
+            company_id=company.id,
+            transaction_date=date.fromisoformat(values["transaction_date"]),
+            amount=Decimal(values["amount"]),
+            currency=values["currency"],
+            direction=Direction(values["direction"]),
+            counterparty=values.get("counterparty"),
+            reference=values.get("reference"),
+            fingerprint_version=1,
+            source_fingerprint=conflicting.source_fingerprint,
+            is_validated=True,
+        )
+    )
+    session.flush()
+
+    from sme_financial_dashboard.services.import_service import ImportStateError
+
+    with pytest.raises(ImportStateError, match="fingerprint changed"):
+        ImportService.commit(
+            session, preview_id=preview.preview_id, context=context, confirm=True
+        )
+    session.expire_all()
+    stored_rows = session.scalars(
+        select(ImportRow)
+        .where(ImportRow.import_batch_id == preview.preview_id)
+        .order_by(ImportRow.source_row_number)
+    ).all()
+    batch = session.get(ImportBatch, preview.preview_id)
+    transactions = session.scalars(
+        select(Transaction).where(Transaction.company_id == company.id)
+    ).all()
+    assert len(transactions) == 1
+    assert batch.status.value == "PREVIEWED"
+    assert all(row.transaction_id is None for row in stored_rows)
+    assert all(row.row_status is ImportRowStatus.VALID for row in stored_rows)
