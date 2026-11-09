@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import re
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
@@ -104,7 +105,11 @@ class ImportMapping:
         if len(set(self.columns.values())) != len(self.columns):
             raise ImportMappingError("Each source column can map to only one transaction field.")
         try:
-            datetime.strptime("2001-02-03", self.date_format)
+            sample = datetime(2001, 2, 3)
+            rendered = sample.strftime(self.date_format)
+            parsed = datetime.strptime(rendered, self.date_format)
+            if parsed.date() != sample.date():
+                raise ValueError("Date format does not preserve day, month and year.")
         except (ValueError, TypeError) as exc:
             raise ImportMappingError("Date format is invalid; use a strptime format such as %d/%m/%Y.") from exc
 
@@ -327,7 +332,15 @@ def _normalize_candidate(
             raw_value_date = _get(row, mapping, "value_date")
             value_date = _parse_date(raw_value_date, mapping.date_format).isoformat() if _clean_cell(raw_value_date) else None
         except ValueError as exc:
-            issues.append({"code": "VALUE_DATE_INVALID", "message": str(exc)})
+            return _Candidate(
+                row,
+                raw_values,
+                None,
+                None,
+                _optional(row, mapping, "reference") or "",
+                ImportRowStatus.INVALID,
+                [{"code": "VALUE_DATE_INVALID", "message": str(exc)}],
+            )
     description = _optional(row, mapping, "description")
     account_name = _optional(row, mapping, "account_name")
     normalized = {
@@ -440,7 +453,6 @@ class ImportService:
             if candidate.fingerprint:
                 fingerprint_groups.setdefault(candidate.fingerprint, []).append(candidate)
 
-        duplicates_in_batch: set[int] = set()
         for group in fingerprint_groups.values():
             if len(group) <= 1:
                 continue
@@ -458,7 +470,6 @@ class ImportService:
                         "code": "DUPLICATE_IN_BATCH",
                         "message": "This row duplicates an earlier row in the same file.",
                     })
-                    duplicates_in_batch.add(id(candidate))
 
         fingerprints = list(fingerprint_groups)
         existing = set()
@@ -489,7 +500,7 @@ class ImportService:
             company_id=verified.company_id,
             uploaded_by_user_id=verified.user_id,
             file_name=safe_name,
-            file_sha256=__import__("hashlib").sha256(file_bytes).hexdigest(),
+            file_sha256=hashlib.sha256(file_bytes).hexdigest(),
             file_type=FileType(document.file_type),
             extraction_method=ImportMethod(document.extraction_method),
             source_page_count=document.source_page_count,
