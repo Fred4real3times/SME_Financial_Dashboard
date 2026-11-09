@@ -501,6 +501,7 @@ if companies:
                             current_preview.review_count,
                             current_preview.blank_count,
                         ],
+                        strict=True,
                     ):
                         column.metric(label, value)
                     if current_preview.sample_rows:

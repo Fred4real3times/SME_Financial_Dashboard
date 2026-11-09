@@ -9,7 +9,6 @@ from conftest import seed_workspace
 from sme_financial_dashboard.db.models import (
     AuditEvent,
     Direction,
-    ImportBatch,
     ImportRow,
     ImportRowStatus,
     MembershipRole,
@@ -24,7 +23,6 @@ from sme_financial_dashboard.services.import_service import (
     ImportConfirmationRequired,
     ImportMapping,
     ImportService,
-    ImportServiceError,
 )
 
 
@@ -60,15 +58,15 @@ def _mapping() -> ImportMapping:
 
 
 def test_preview_stages_rows_without_creating_transactions_then_partially_commits(session):
-    _workspace, user, company, context = _context(session)
+    _workspace, _user, company, context = _context(session)
     content = (
-        "Date;Amount;Currency;Direction;Reference;Counterparty\n"
+        b"Date;Amount;Currency;Direction;Reference;Counterparty\n"
         "01/01/2026;1.250,50;XAF;CREDIT;R-1;Client A\n"
         "02/01/2026;300,00;XAF;DEBIT;R-2;Vendor B\n"
         "bad-date;50,00;XAF;CREDIT;R-3;Client C\n"
         "03/01/2026;100,00;XAF;CREDIT;;Shop D\n"
         "03/01/2026;100,00;XAF;CREDIT;;Shop D\n"
-    ).encode()
+    )
 
     preview = ImportService.preview(
         session,
@@ -131,9 +129,9 @@ def test_preview_stages_rows_without_creating_transactions_then_partially_commit
 def test_preview_marks_referenced_reimport_as_duplicate(session):
     _workspace, _user, company, context = _context(session, suffix="duplicate")
     content = (
-        "Date;Amount;Currency;Direction;Reference;Counterparty\n"
+        b"Date;Amount;Currency;Direction;Reference;Counterparty\n"
         "01/01/2026;100,00;XAF;CREDIT;REF-100;Client\n"
-    ).encode()
+    )
     first = ImportService.preview(
         session, file_bytes=content, file_name="bank.csv", mapping=_mapping(), context=context
     )
@@ -163,9 +161,9 @@ def test_preview_marks_referenced_reimport_as_duplicate(session):
 def test_existing_reference_less_match_is_review_not_silent_duplicate(session):
     _workspace, _user, _company, context = _context(session, suffix="review")
     content = (
-        "Date;Amount;Currency;Direction;Reference;Counterparty\n"
+        b"Date;Amount;Currency;Direction;Reference;Counterparty\n"
         "01/01/2026;100,00;XAF;CREDIT;;Client\n"
-    ).encode()
+    )
     first = ImportService.preview(
         session, file_bytes=content, file_name="bank.csv", mapping=_mapping(), context=context
     )
@@ -187,9 +185,9 @@ def test_viewer_cannot_preview_or_commit(session):
         session, role=MembershipRole.VIEWER, suffix="viewer"
     )
     content = (
-        "Date;Amount;Currency;Direction;Reference;Counterparty\n"
+        b"Date;Amount;Currency;Direction;Reference;Counterparty\n"
         "01/01/2026;100,00;XAF;CREDIT;REF-1;Client\n"
-    ).encode()
+    )
     with pytest.raises(PermissionError):
         ImportService.preview(
             session, file_bytes=content, file_name="bank.csv", mapping=_mapping(), context=context
@@ -206,9 +204,9 @@ def test_user_cannot_forge_company_context_for_another_workspace(session):
         role=MembershipRole.ADMIN,
     )
     content = (
-        "Date;Amount;Currency;Direction;Reference;Counterparty\n"
+        b"Date;Amount;Currency;Direction;Reference;Counterparty\n"
         "01/01/2026;100,00;XAF;CREDIT;REF-1;Client\n"
-    ).encode()
+    )
     with pytest.raises(CompanyAccessDenied):
         ImportService.preview(
             session, file_bytes=content, file_name="bank.csv", mapping=_mapping(), context=forged
