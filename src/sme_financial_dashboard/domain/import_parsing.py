@@ -111,12 +111,16 @@ def inspect_statement(
             raise ImportFileError("CSV_MALFORMED", "CSV structure is malformed.") from exc
         if not matrix:
             raise ImportFileError("HEADER_MISSING", "CSV has no rows.")
+        if not any(_cell_text(value) for value in matrix[0]):
+            raise ImportFileError("HEADER_MISSING", "CSV header row is blank.")
         header = _headers(matrix[0])
         rows: list[ParsedRow] = []
         for row_number, values in enumerate(matrix[1:], start=2):
             if len(rows) >= MAX_IMPORT_ROWS:
                 raise ImportFileError("ROW_LIMIT_EXCEEDED", "CSV exceeds the 10,000-row limit.")
-            padded = tuple(values[: len(header)]) + tuple("" for _ in range(max(0, len(header) - len(values))))
+            if len(values) > len(header) and any(_cell_text(value) for value in values[len(header):]):
+                raise ImportFileError("ROW_COLUMN_COUNT_MISMATCH", f"CSV row {row_number} has extra columns.")
+            padded = tuple(values) + tuple("" for _ in range(max(0, len(header) - len(values))))
             rows.append(ParsedRow(row_number, padded))
         return ParsedDocument("CSV", "CSV_ROWS", header, tuple(rows))
 
@@ -162,9 +166,16 @@ def inspect_statement(
                 raise ImportFileError("HEADER_MISSING", "Selected worksheet is empty.") from None
             header = _headers([cell.value for cell in first])
             rows = []
+            if not any(_cell_text(cell.value) for cell in first):
+                raise ImportFileError("HEADER_MISSING", "Selected worksheet has a blank header row.")
             for excel_row_number, cells in enumerate(iterator, start=2):
                 if len(rows) >= MAX_IMPORT_ROWS:
                     raise ImportFileError("ROW_LIMIT_EXCEEDED", "Worksheet exceeds the 10,000-row limit.")
+                if len(cells) > len(header) and any(_cell_text(cell.value) for cell in cells[len(header):]):
+                    raise ImportFileError(
+                        "ROW_COLUMN_COUNT_MISMATCH",
+                        f"Worksheet row {excel_row_number} has extra columns.",
+                    )
                 values: list[Any] = []
                 for cell in cells[: len(header)]:
                     value = cell.value
@@ -209,8 +220,18 @@ def inspect_statement(
                     elif tuple(cleaned[0]) == headers:
                         data_rows = cleaned[1:]
                     else:
+                        if len(cleaned[0]) > len(headers) and any(cleaned[0][len(headers):]):
+                            raise ImportFileError(
+                                "PDF_TABLE_LAYOUT_AMBIGUOUS",
+                                "PDF tables use inconsistent column layouts; map or split them manually.",
+                            )
                         data_rows = cleaned
                     for values in data_rows:
+                        if len(values) > len(headers) and any(values[len(headers):]):
+                            raise ImportFileError(
+                                "PDF_TABLE_LAYOUT_AMBIGUOUS",
+                                "A PDF row contains extra values outside the detected header columns.",
+                            )
                         if len(rows) >= MAX_IMPORT_ROWS:
                             raise ImportFileError("ROW_LIMIT_EXCEEDED", "PDF exceeds the 10,000-row limit.")
                         row_counter += 1
