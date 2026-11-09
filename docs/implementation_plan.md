@@ -142,4 +142,8 @@ Implemented:
 
 Automated evidence: commit \`62eb759f2c5c480a7b7385d6939d1d7377bc398e\`, PR #6 CI run \`42637974318\`, Python 3.11/3.12/3.13 each passed Ruff, 120 tests, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign_key_check.
 
-**Still open:** manual browser testing of filter changes, charts, snapshot creation and balance unavailability states; independent security review; concurrency-safe DB uniqueness for duplicate snapshot submissions. The service checks duplicates and the report withholds balances for multiple latest-date snapshots, but the initial schema does not include a unique snapshot key.
+**Still open:** manual browser testing of filter changes, charts, snapshot creation and balance unavailability states; independent security review; concurrency-safe DB uniqueness for duplicate snapshot submissions. A new automated Streamlit AppTest smoke test also starts the real app entry point against an isolated synthetic SQLite database, authenticates an ADMIN and checks dashboard KPI/closing-balance rendering. The service checks duplicates and the report withholds balances for multiple latest-date snapshots, but the initial schema does not include a unique snapshot key.
+
+
+## Phase 5 Streamlit UI smoke automation — 2026-11-09
+Added \`tests/workflows/test_dashboard_streamlit_ui.py\` using Streamlit's \`AppTest\`. The test creates an isolated SQLite DB, bootstraps a synthetic ADMIN, creates a company/category, inserts two synthetic validated transactions and a verified opening snapshot, supplies a signed session token, then executes the real \`app.py\` and asserts no Streamlit exception, dashboard section, net KPI and calculated closing-balance metric. The test is part of pytest and therefore CI-gated on Python 3.11, 3.12 and 3.13. This is a headless UI smoke test, not a manual browser test.
