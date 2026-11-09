@@ -109,3 +109,7 @@ Ambiguous import rows stay in the REVIEW queue until an ADMIN or ACCOUNTANT reco
 
 ### Phase 5 dashboard verification — 2026-11-09
 The Phase 5 dashboard branch head \`62eb759f2c5c480a7b7385d6939d1d7377bc398e\` passed GitHub Actions run [42637974318](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42637974318): Python 3.11, 3.12 and 3.13 each passed Ruff, 120 tests, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign_key_check. PR #6 remains a draft. Manual browser smoke testing and independent security review remain open.
+
+
+### Phase 6 — Exports and history (implementation in progress)
+The Phase 6 branch adds filtered CSV/PDF export, spreadsheet-formula neutralization, company-scoped import batch/row history and restricted audit history. Exports reuse the exact dashboard filters and include only validated, non-deleted transactions. Automated verification and release status will be recorded after the branch-head CI completes.

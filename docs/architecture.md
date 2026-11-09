@@ -41,8 +41,9 @@ TransactionService.list(filters, CompanyContext) → scoped DTOs.
 TransactionService.update_category(transaction_id, category_id, actor_context) → updated DTO + audit.
 Category/Rule services create/update with validation and audit.
 DashboardService.report(filters, CompanyContext) → Decimal KPIs, previous-period comparison, monthly values, spend rankings and conditional balance state. AccountSnapshotService creates/list opening-balance evidence with role checks and audit.
-ExportService.export(filters, format, CompanyContext) → filtered CSV/PDF bytes.
-AuditService.list(filters, CompanyContext) → scoped events.
+ExportService.export_csv/export_pdf(filters, CompanyContext) → bounded, filtered CSV/PDF bytes; same DashboardFilters and tenant scope as dashboard.
+ImportHistoryService.list_batches/list_rows(CompanyContext) → company-scoped paginated import provenance.
+AuditService.list_events(CompanyContext) → company-scoped paginated audit metadata; ADMIN/ACCOUNTANT only.
 No public HTTP API required for MVP.
 
 ## Approved permissions
@@ -148,3 +149,13 @@ Workspace service inputs now normalize invalid values into explicit WorkspaceErr
 - For an account/currency, the most recent unique verified snapshot at or before end_date is selected. A conflicting set at the latest date makes the balance unavailable. Treat as_of_date as the start of day and include same-day activity through end_date.
 - A closing balance is only meaningful for a single account and currency with no category/direction subset. Otherwise show an explicit unavailable reason.
 - Plotly chart values may be converted to float only for visualization; all totals and reconciliations remain Decimal.
+
+
+## Phase 6 exports and history
+- CSV/PDF export must call the same DashboardService filter contract and re-resolve CompanyContext and EXPORT permission. Exported rows are validated, non-deleted and never combined across currencies.
+- Limit the export query to \`MAX_EXPORT_ROWS + 1\` at SQL level; fail closed if the bound is exceeded. Do not stream unbounded row sets into application memory.
+- Neutralize CSV formula injection in every user-controlled text field, including text preceded by whitespace/control characters. Keep monetary values as fixed-point Decimal strings.
+- PDF generation escapes all dynamic text, wraps table cells and includes company/filter metadata, per-currency totals and selected transaction details.
+- Export preparation is audit logged with only export metadata and selected filters; avoid copying full transaction payloads into AuditEvent.
+- Import history and audit history queries always scope by verified company context, with bounded pagination.
+- Audit events are visible only to roles with VIEW_AUDIT (ADMIN/ACCOUNTANT in MVP). VIEWER retains read/export and import-history access but not audit-log access.

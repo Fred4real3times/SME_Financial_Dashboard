@@ -145,3 +145,18 @@ The import-engine automated acceptance tests are **PASS** on final QA branch hea
 - DASH-10 Independent Decimal expected-value checks validate current totals and closing balance — PASS, dashboard reporting integration tests.
 - CI evidence: branch head \`62eb759f2c5c480a7b7385d6939d1d7377bc398e\`, run \`42637974318\`; Python 3.11, 3.12 and 3.13 each passed Ruff, 120 tests, Alembic round-trip and SQLite foreign_key_check.
 - **Still BLOCKED:** manual browser smoke test and independent security review. Concurrent duplicate opening-snapshot submissions are only guarded by the service lookup in this iteration; database-level uniqueness is a follow-up hardening item.
+
+
+## Phase 6 export and history acceptance criteria — implementation in progress
+- EXP-01 CSV export applies the same inclusive dates, currency, account, category and direction filters as the dashboard.
+- EXP-02 CSV export is company-scoped and excludes unvalidated and soft-deleted transactions.
+- EXP-03 CSV output neutralizes spreadsheet formula prefixes even after leading whitespace/control characters, for all user-controlled text columns.
+- EXP-04 PDF export is a valid PDF, includes company/filter metadata, per-currency cash-flow totals and only filtered transaction rows.
+- EXP-05 CSV/PDF exports enforce a bounded maximum row count using a SQL-side row limit.
+- EXP-06 Preparing an export writes a company-scoped audit event with filters, format and row count without duplicating transaction details.
+- HIS-01 Import batch history lists only batches in the active company and exposes file type, extraction method, status and row counters.
+- HIS-02 Import row history preserves source row/page/table provenance, status, issues and review outcome; rows of another company's batch cannot be queried.
+- AUD-01 Audit history is company-scoped, ordered and paginated.
+- AUD-02 Only ADMIN/ACCOUNTANT can inspect audit history; VIEWER can still export and inspect permitted import history.
+- AUD-03 Audit UI shows event metadata without dumping sensitive before/after JSON payloads.
+- Current implementation branch and CI evidence will be recorded after tests pass. Manual browser review remains separate.

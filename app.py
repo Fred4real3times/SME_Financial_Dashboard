@@ -54,6 +54,12 @@ from sme_financial_dashboard.services.dashboard_service import (
     DashboardFilters,
     DashboardService,
 )
+from sme_financial_dashboard.services.reporting_service import (
+    AuditService,
+    ExportService,
+    ImportHistoryService,
+    ReportingError,
+)
 
 st.set_page_config(page_title="SME Financial Dashboard", page_icon="📊", layout="wide")
 
@@ -334,6 +340,7 @@ with col_b:
 
 
 # Phase 5 — financial dashboard and verified opening-balance context.
+dashboard_filters: DashboardFilters | None = None
 if companies:
     st.divider()
     st.subheader("Financial dashboard")
@@ -409,17 +416,18 @@ if companies:
                 company_context = resolve_company_context(
                     db, user_id=user.id, company_id=chosen
                 )
+                dashboard_filters = DashboardFilters(
+                    start_date=dashboard_start,
+                    end_date=dashboard_end,
+                    currency=dashboard_currency,
+                    account_name=dashboard_account,
+                    category_id=dashboard_category,
+                    direction=dashboard_direction,
+                )
                 report = DashboardService.report(
                     db,
                     company_context,
-                    DashboardFilters(
-                        start_date=dashboard_start,
-                        end_date=dashboard_end,
-                        currency=dashboard_currency,
-                        account_name=dashboard_account,
-                        category_id=dashboard_category,
-                        direction=dashboard_direction,
-                    ),
+                    dashboard_filters,
                 )
         except (DashboardError, PermissionError) as exc:
             st.error(f"Dashboard could not be calculated: {exc}")
@@ -1459,3 +1467,205 @@ if companies:
                         st.error("You are no longer authorized to review this company data.")
         except PermissionError:
             st.error("You are not authorized to access the import review queue.")
+
+
+# Phase 6 — filtered exports, import history and audit history.
+if companies and dashboard_filters is not None:
+    st.divider()
+    st.subheader("Exports and history")
+    export_signature = hashlib.sha256(
+        (
+            f"{chosen}|{dashboard_filters.start_date.isoformat()}|"
+            f"{dashboard_filters.end_date.isoformat()}|{dashboard_filters.currency}|"
+            f"{dashboard_filters.account_name}|{dashboard_filters.category_id}|"
+            f"{dashboard_filters.direction}"
+        ).encode("utf-8")
+    ).hexdigest()[:12]
+    csv_state_key = f"csv_export_{chosen}_{export_signature}"
+    pdf_state_key = f"pdf_export_{chosen}_{export_signature}"
+
+    export_col_csv, export_col_pdf = st.columns(2)
+    with export_col_csv:
+        if st.button("Prepare filtered CSV", key=f"prepare_csv_{export_signature}"):
+            try:
+                with session_factory() as db, db.begin():
+                    company_context = resolve_company_context(
+                        db, user_id=user.id, company_id=chosen
+                    )
+                    artifact = ExportService.export_csv(
+                        db, company_context, dashboard_filters
+                    )
+                st.session_state[csv_state_key] = artifact
+                st.success(f"CSV prepared: {artifact.row_count} transactions.")
+            except (ReportingError, DashboardError, PermissionError) as exc:
+                st.error(f"CSV export failed: {exc}")
+        csv_artifact = st.session_state.get(csv_state_key)
+        if csv_artifact is not None:
+            st.download_button(
+                "Download CSV",
+                data=csv_artifact.data,
+                file_name=csv_artifact.filename,
+                mime=csv_artifact.content_type,
+                key=f"download_csv_{export_signature}",
+            )
+    with export_col_pdf:
+        if st.button("Prepare filtered PDF", key=f"prepare_pdf_{export_signature}"):
+            try:
+                with session_factory() as db, db.begin():
+                    company_context = resolve_company_context(
+                        db, user_id=user.id, company_id=chosen
+                    )
+                    artifact = ExportService.export_pdf(
+                        db, company_context, dashboard_filters
+                    )
+                st.session_state[pdf_state_key] = artifact
+                st.success(f"PDF prepared: {artifact.row_count} transactions.")
+            except (ReportingError, DashboardError, PermissionError) as exc:
+                st.error(f"PDF export failed: {exc}")
+        pdf_artifact = st.session_state.get(pdf_state_key)
+        if pdf_artifact is not None:
+            st.download_button(
+                "Download PDF",
+                data=pdf_artifact.data,
+                file_name=pdf_artifact.filename,
+                mime=pdf_artifact.content_type,
+                key=f"download_pdf_{export_signature}",
+            )
+
+    st.markdown("**Import history**")
+    try:
+        with session_factory() as db:
+            company_context = resolve_company_context(
+                db, user_id=user.id, company_id=chosen
+            )
+            import_batches = ImportHistoryService.list_batches(
+                db, company_context, limit=100
+            )
+        if import_batches:
+            st.dataframe(
+                [
+                    {
+                        "File": item.file_name,
+                        "Type": item.file_type.value,
+                        "Extraction": item.extraction_method.value,
+                        "Status": item.status.value,
+                        "Rows": item.total_count,
+                        "Valid": item.valid_count,
+                        "Invalid": item.invalid_count,
+                        "Duplicate": item.duplicate_count,
+                        "Review": item.review_count,
+                        "Created": item.created_at,
+                        "Committed": item.committed_at,
+                    }
+                    for item in import_batches
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
+            batch_labels = {
+                item.id: (
+                    f"{item.file_name} · {item.status.value} · "
+                    f"{item.created_at.isoformat()}"
+                )
+                for item in import_batches
+            }
+            selected_batch_id = st.selectbox(
+                "Inspect import batch",
+                options=list(batch_labels),
+                format_func=lambda value: batch_labels[value],
+                key=f"history_batch_{chosen}",
+            )
+            with session_factory() as db:
+                company_context = resolve_company_context(
+                    db, user_id=user.id, company_id=chosen
+                )
+                history_rows = ImportHistoryService.list_rows(
+                    db,
+                    company_context,
+                    batch_id=selected_batch_id,
+                    limit=100,
+                )
+            if history_rows:
+                row_labels = {
+                    item.id: f"Source row {item.source_row_number} · {item.row_status.value}"
+                    for item in history_rows
+                }
+                selected_history_row = st.selectbox(
+                    "Inspect imported source row",
+                    options=list(row_labels),
+                    format_func=lambda value: row_labels[value],
+                    key=f"history_row_{chosen}_{selected_batch_id}",
+                )
+                history_row = next(
+                    item for item in history_rows if item.id == selected_history_row
+                )
+                st.dataframe(
+                    [
+                        {
+                            "Source row": item.source_row_number,
+                            "Status": item.row_status.value,
+                            "PDF page": item.source_page_number,
+                            "PDF table": item.source_table_index,
+                            "Decision": (
+                                item.review_decision.value if item.review_decision else None
+                            ),
+                            "Reviewed at": item.reviewed_at,
+                        }
+                        for item in history_rows
+                    ],
+                    use_container_width=True,
+                    hide_index=True,
+                )
+                st.caption("Selected source values and parser diagnostics")
+                st.json(
+                    {
+                        "raw_values": history_row.raw_values_json,
+                        "normalized_values": history_row.normalized_values_json,
+                        "issues": history_row.issues_json,
+                        "source_fingerprint": history_row.source_fingerprint,
+                        "transaction_id": (
+                            str(history_row.transaction_id)
+                            if history_row.transaction_id
+                            else None
+                        ),
+                        "resolution_note": history_row.resolution_note,
+                    }
+                )
+            else:
+                st.info("The selected batch has no staged source rows.")
+        else:
+            st.info("No import batches have been recorded for this company.")
+    except (ReportingError, PermissionError) as exc:
+        st.error(f"Import history could not be loaded: {exc}")
+
+    if workspace_context.role in {MembershipRole.ADMIN, MembershipRole.ACCOUNTANT}:
+        st.markdown("**Audit history**")
+        try:
+            with session_factory() as db:
+                company_context = resolve_company_context(
+                    db, user_id=user.id, company_id=chosen
+                )
+                audit_events = AuditService.list_events(
+                    db, company_context, limit=100
+                )
+            if audit_events:
+                st.dataframe(
+                    [
+                        {
+                            "When (UTC)": item.created_at,
+                            "Action": item.action,
+                            "Entity": item.entity_type,
+                            "Entity ID": str(item.entity_id),
+                            "Actor user ID": str(item.actor_user_id),
+                        }
+                        for item in audit_events
+                    ],
+                    use_container_width=True,
+                    hide_index=True,
+                )
+            else:
+                st.info("No company audit events have been recorded yet.")
+        except (ReportingError, PermissionError) as exc:
+            st.error(f"Audit history could not be loaded: {exc}")
+    else:
+        st.caption("Audit history is restricted to ADMIN and ACCOUNTANT roles.")

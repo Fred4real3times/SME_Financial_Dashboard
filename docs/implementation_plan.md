@@ -19,8 +19,8 @@ Category CRUD, deterministic rules/conflict handling, manual correction and befo
 ## Phase 5 — Dashboard [COMPLETE — automated CI; manual browser smoke test outstanding]
 Canonical filters; inflow/outflow/net; conditional balances; monthly charts, top spend/counterparties and period comparison; independent Decimal reconciliation. Exit AC-04.
 
-## Phase 6 — Exports and history
-CSV/PDF from same filtered report DTO; formula injection defense; import history and audit views; tenant/filter export tests. Exit AC-05.
+## Phase 6 — Exports and history [IN PROGRESS]
+CSV/PDF from the same company-scoped DashboardFilters; CSV formula-injection defense; import-batch/row history; company audit history; export history/audit events; bounded export size and pagination. Exit AC-05 after backend and UI tests.
 
 ## Phase 7 — Synthetic data and QA
 Generate 12 months for three SME profiles with deliberate noisy rows. Run unit/integration/workflow/security tests; backup/restore; independent QA report; fix in-scope P0/P1 and rerun. Exit AC-06 and all required tests.
@@ -143,3 +143,18 @@ Implemented:
 Automated evidence: commit \`62eb759f2c5c480a7b7385d6939d1d7377bc398e\`, PR #6 CI run \`42637974318\`, Python 3.11/3.12/3.13 each passed Ruff, 120 tests, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign_key_check.
 
 **Still open:** manual browser testing of filter changes, charts, snapshot creation and balance unavailability states; independent security review; concurrency-safe DB uniqueness for duplicate snapshot submissions. The service checks duplicates and the report withholds balances for multiple latest-date snapshots, but the initial schema does not include a unique snapshot key.
+
+
+## Phase 6 implementation details — 2026-11-09
+- CSV and PDF exports consume the exact \`DashboardFilters\` used by the dashboard and re-resolve \`CompanyContext\` and \`Permission.EXPORT\` inside the service.
+- Exports include only validated, non-deleted transactions; currency is retained per row and is never converted/combined.
+- Export row reads are capped in SQL at 10,001 before applying the 10,000-row safety limit, avoiding unbounded materialization for oversized exports.
+- CSV output uses UTF-8 with BOM and CRLF. User-controlled text fields are prefixed with an apostrophe when a spreadsheet formula prefix (=, +, -, @) appears after whitespace/control characters (spaces, tabs, CR/LF, vertical tab, form feed, NUL or BOM).
+- PDF output uses ReportLab with escaped company/transaction text and wrapped cells; includes selected filters, per-currency cash-flow summary and filtered transaction detail.
+- Export preparation emits an \`AuditEvent\` (\`EXPORT_CSV_PREPARED\` / \`EXPORT_PDF_PREPARED\`) containing only format, generated filename, row count and filters; no transaction payload is copied into audit metadata.
+- Import history is read-only, company-scoped and paginated at the service layer. It exposes batch status/counters and source row/page/table provenance, raw/normalized values, issues and review outcome.
+- Audit history is read-only and company-scoped. It is available only to ADMIN/ACCOUNTANT; the UI displays event metadata and does not render before/after payloads.
+- VIEWER may export and inspect import history, but cannot inspect the audit log. No schema migration is required.
+
+## Phase 6 remaining validation
+Automated tests must cover CSV formula injection, exact filters, tenant isolation, viewer export permission, row limits, valid PDF generation/content, batch/row provenance, audit pagination and authorization. Manual browser validation remains outstanding.
