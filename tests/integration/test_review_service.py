@@ -63,10 +63,10 @@ def _mapping() -> ImportMapping:
 
 def _review_preview(session, context):
     content = (
-        "Date;Amount;Currency;Direction;Reference;Counterparty\n"
-        "01/01/2026;100,00;XAF;CREDIT;;Client\n"
-        "01/01/2026;100,00;XAF;CREDIT;;Client\n"
-    ).encode()
+        b"Date;Amount;Currency;Direction;Reference;Counterparty\n"
+        b"01/01/2026;100,00;XAF;CREDIT;;Client\n"
+        b"01/01/2026;100,00;XAF;CREDIT;;Client\n"
+    )
     preview = ImportService.preview(
         session,
         file_bytes=content,
