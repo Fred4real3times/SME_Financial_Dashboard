@@ -20,7 +20,7 @@ Category CRUD, deterministic rules/conflict handling, manual correction and befo
 Canonical filters; inflow/outflow/net; conditional balances; monthly charts, top spend/counterparties and period comparison; independent Decimal reconciliation. Exit AC-04.
 
 ## Phase 6 — Exports and history [IN PROGRESS]
-CSV/PDF exports are generated from the same company-scoped DashboardFilters and validated active transaction query. CSV text formula prefixes are neutralized; PDF includes period, selected filters, per-currency totals and the filtered detail rows. ImportBatch/ImportRow provenance is accessible through company-scoped import history; audit views are restricted to ADMIN/ACCOUNTANT. Exports are audited when prepared. Automated tests cover filtering, formula escaping, PDF fidelity, roles, tenant scope, pagination and export limits. Exit AC-05 and EXP/AUD criteria after exact-head CI passes and manual UI validation is completed.
+CSV/PDF from the same company-scoped DashboardFilters; CSV formula-injection defense; import-batch/row history; company audit history; export history/audit events; bounded export size and pagination. Exit AC-05 after backend and UI tests.
 
 ## Phase 7 — Synthetic data and QA
 Generate 12 months for three SME profiles with deliberate noisy rows. Run unit/integration/workflow/security tests; backup/restore; independent QA report; fix in-scope P0/P1 and rerun. Exit AC-06 and all required tests.
@@ -146,12 +146,15 @@ Automated evidence: commit \`62eb759f2c5c480a7b7385d6939d1d7377bc398e\`, PR #6 C
 
 
 ## Phase 6 implementation details — 2026-11-09
-- \`DashboardService.transactions\` exposes the exact same validated, non-deleted, company-scoped filters as the Dashboard report.
-- CSV and PDF exports share inclusive dates, currency, account, category and direction filters. They do not aggregate across currencies.
-- CSV text columns neutralize spreadsheet formula prefixes after leading whitespace/control characters; numeric amounts are emitted separately as positive decimal text.
-- PDF exports contain company and filter metadata, cash-flow totals per currency, and the filtered transaction details. Long text cells are escaped and wrapped.
-- Exports are limited to 10,000 rows; the query requests at most 10,001 rows to detect an over-limit result without unbounded export materialization.
-- Export preparation is written to AuditEvent with format, filename, row count and selected filters.
-- Import history reuses ImportBatch and ImportRow; it displays file, status, row provenance, issue codes and review metadata without creating a parallel data store.
-- Audit history is company-scoped and restricted to ADMIN/ACCOUNTANT. The UI shows event metadata only, not before/after JSON payloads.
-- No schema migration is expected for Phase 6.
+- CSV and PDF exports consume the exact \`DashboardFilters\` used by the dashboard and re-resolve \`CompanyContext\` and \`Permission.EXPORT\` inside the service.
+- Exports include only validated, non-deleted transactions; currency is retained per row and is never converted/combined.
+- Export row reads are capped in SQL at 10,001 before applying the 10,000-row safety limit, avoiding unbounded materialization for oversized exports.
+- CSV output uses UTF-8 with BOM and CRLF. User-controlled text fields are prefixed with an apostrophe when a spreadsheet formula prefix (=, +, -, @) appears after whitespace/control characters (spaces, tabs, CR/LF, vertical tab, form feed, NUL or BOM).
+- PDF output uses ReportLab with escaped company/transaction text and wrapped cells; includes selected filters, per-currency cash-flow summary and filtered transaction detail.
+- Export preparation emits an \`AuditEvent\` (\`EXPORT_CSV_PREPARED\` / \`EXPORT_PDF_PREPARED\`) containing only format, generated filename, row count and filters; no transaction payload is copied into audit metadata.
+- Import history is read-only, company-scoped and paginated at the service layer. It exposes batch status/counters and source row/page/table provenance, raw/normalized values, issues and review outcome.
+- Audit history is read-only and company-scoped. It is available only to ADMIN/ACCOUNTANT; the UI displays event metadata and does not render before/after payloads.
+- VIEWER may export and inspect import history, but cannot inspect the audit log. No schema migration is required.
+
+## Phase 6 remaining validation
+Automated tests must cover CSV formula injection, exact filters, tenant isolation, viewer export permission, row limits, valid PDF generation/content, batch/row provenance, audit pagination and authorization. Manual browser validation remains outstanding.

@@ -19,12 +19,7 @@ FIN-01 Positive Decimal + direction. FIN-02 Correct inflow/outflow/net formulas.
 
 ## Categorization, exports and audit
 CAT-01 keyword/counterparty/reference rules. CAT-02 deterministic priority. CAT-03 conflicting top priority flagged. CAT-04 correction records actor/time/before/after. CAT-05 cross-company category/rule rejected.
-EXP-01 CSV contains exactly the validated, non-deleted rows matching the selected company/date/currency/account/category/direction filters — implementation and automated test added; CI pending.
-EXP-02 PDF contains the same company, filters, per-currency totals and filtered transaction rows — implementation and automated test added; CI pending.
-EXP-03 CSV formula-like text is escaped before opening in spreadsheet software — implementation and automated test added; CI pending.
-AUD-01 imports, corrections, rules, role changes and export preparation are audited — export preparation events added; full action matrix continues to be tested.
-AUD-02 import source provenance remains available through company-scoped ImportBatch/ImportRow history — history view/service added; automated tests pending CI.
-AUD-03 audit history is restricted to roles with VIEW_AUDIT and cannot cross companies — implementation and automated tests added; CI pending.
+EXP-01 CSV exactly filtered rows. EXP-02 PDF same company/currency/period/totals/filters. EXP-03 formula cells escaped. AUD-01 imports/corrections/rules/roles audited. AUD-02 source provenance retained. AUD-03 restricted audit views denied.
 
 ## Security and operations
 SEC-01 invalid/inactive authentication rejected. SEC-02 role matrix enforced in services. SEC-03 cross-tenant list/detail/correction/dashboard/audit/export denied. SEC-04 malformed/oversized files rejected safely. SEC-05 injection-like inputs harmless. SEC-06 no secrets or real bank data in repo/sample.
@@ -152,12 +147,16 @@ The import-engine automated acceptance tests are **PASS** on final QA branch hea
 - **Still BLOCKED:** manual browser smoke test and independent security review. Concurrent duplicate opening-snapshot submissions are only guarded by the service lookup in this iteration; database-level uniqueness is a follow-up hardening item.
 
 
-## Phase 6 export and history acceptance — implementation in progress
-- EXPORT-01 Prepared CSV and PDF artifacts use DashboardFilters without broadening or changing the selected company or transaction scope.
-- EXPORT-02 CSV formula neutralization covers cells beginning with spreadsheet formula prefixes (including leading whitespace/control characters).
-- EXPORT-03 Export generation is audited with format, filter scope, filename and row count.
-- HIST-01 Import history lists only the selected company's ImportBatch records and paginated source rows.
-- HIST-02 Import history retains row status, source row/page/table provenance, issue codes and review-decision metadata.
-- AUD-04 Audit trail displays company-scoped event metadata only; sensitive before/after JSON is not exposed in the current UI.
-- EXPORT-04 CSV/PDF export is capped at 10,000 rows and rejects larger result sets with a clear error.
-All Phase 6 criteria require a green CI run for the exact PR head; manual browser verification remains separate.
+## Phase 6 export and history acceptance criteria — implementation in progress
+- EXP-01 CSV export applies the same inclusive dates, currency, account, category and direction filters as the dashboard.
+- EXP-02 CSV export is company-scoped and excludes unvalidated and soft-deleted transactions.
+- EXP-03 CSV output neutralizes spreadsheet formula prefixes even after leading whitespace/control characters, for all user-controlled text columns.
+- EXP-04 PDF export is a valid PDF, includes company/filter metadata, per-currency cash-flow totals and only filtered transaction rows.
+- EXP-05 CSV/PDF exports enforce a bounded maximum row count using a SQL-side row limit.
+- EXP-06 Preparing an export writes a company-scoped audit event with filters, format and row count without duplicating transaction details.
+- HIS-01 Import batch history lists only batches in the active company and exposes file type, extraction method, status and row counters.
+- HIS-02 Import row history preserves source row/page/table provenance, status, issues and review outcome; rows of another company's batch cannot be queried.
+- AUD-01 Audit history is company-scoped, ordered and paginated.
+- AUD-02 Only ADMIN/ACCOUNTANT can inspect audit history; VIEWER can still export and inspect permitted import history.
+- AUD-03 Audit UI shows event metadata without dumping sensitive before/after JSON payloads.
+- Current implementation branch and CI evidence will be recorded after tests pass. Manual browser review remains separate.

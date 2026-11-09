@@ -12,7 +12,7 @@ from xml.sax.saxutils import escape
 from reportlab.lib import colors
 from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import A4, landscape
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
     Paragraph,
@@ -72,14 +72,12 @@ def _verified_context(
 
 
 def _safe_csv_text(value: str | None) -> str:
-    """Neutralize spreadsheet formula prefixes while preserving the source text."""
+    """Neutralize spreadsheet formula prefixes after whitespace/control characters."""
     if value is None:
         return ""
     text = str(value)
-    trimmed = text.lstrip(" \t\r\n")
-    if text.startswith(("\t", "\r", "\n")) or (
-        trimmed and trimmed[0] in {"=", "+", "-", "@"}
-    ):
+    probe = text.lstrip(" \t\r\n\v\f\x00\ufeff")
+    if probe.startswith(("=", "+", "-", "@")):
         return "'" + text
     return text
 
@@ -109,7 +107,11 @@ def _record_export(
                 "currency": filters.currency,
                 "account_name": filters.account_name,
                 "category_id": str(filters.category_id) if filters.category_id else None,
-                "direction": filters.direction.value if hasattr(filters.direction, "value") else filters.direction,
+                "direction": (
+                    filters.direction.value
+                    if hasattr(filters.direction, "value")
+                    else filters.direction
+                ),
             },
         )
     )
@@ -121,6 +123,13 @@ def _filename(export_format: str, filters: DashboardFilters) -> str:
         f"sme_transactions_{filters.start_date:%Y%m%d}_"
         f"{filters.end_date:%Y%m%d}.{export_format.lower()}"
     )
+
+
+def _check_export_size(row_count: int) -> None:
+    if row_count > MAX_EXPORT_ROWS:
+        raise ReportingError(
+            f"Export exceeds the {MAX_EXPORT_ROWS:,}-row safety limit; narrow the filters."
+        )
 
 
 class ExportService:
@@ -136,10 +145,7 @@ class ExportService:
         rows = DashboardService.transactions(
             session, verified, filters, limit=MAX_EXPORT_ROWS + 1
         )
-        if len(rows) > MAX_EXPORT_ROWS:
-            raise ReportingError(
-                f"Export exceeds the {MAX_EXPORT_ROWS:,}-row safety limit; narrow the filters."
-            )
+        _check_export_size(len(rows))
 
         buffer = io.StringIO(newline="")
         writer = csv.writer(buffer, lineterminator="\r\n")
@@ -198,11 +204,10 @@ class ExportService:
         filters: DashboardFilters,
     ) -> ExportArtifact:
         verified = _verified_context(session, context, Permission.EXPORT)
-        rows = DashboardService.transactions(session, verified, filters)
-        if len(rows) > MAX_EXPORT_ROWS:
-            raise ReportingError(
-                f"Export exceeds the {MAX_EXPORT_ROWS:,}-row safety limit; narrow the filters."
-            )
+        rows = DashboardService.transactions(
+            session, verified, filters, limit=MAX_EXPORT_ROWS + 1
+        )
+        _check_export_size(len(rows))
 
         company = session.scalar(
             select(Company).where(Company.id == verified.company_id)
@@ -223,15 +228,25 @@ class ExportService:
             author="SME Financial Dashboard",
         )
         styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            "SMEReportTitle",
+            parent=styles["Title"],
+            alignment=TA_CENTER,
+        )
         cell_style = ParagraphStyle(
-            "ExportCell",
+            "SMEReportCell",
             parent=styles["BodyText"],
             fontName="Helvetica",
-            fontSize=6,
-            leading=7,
+            fontSize=6.5,
+            leading=8,
+            spaceAfter=0,
         )
-        title_style = styles["Title"]
-        title_style.alignment = TA_CENTER
+        header_style = ParagraphStyle(
+            "SMEReportHeader",
+            parent=cell_style,
+            fontName="Helvetica-Bold",
+            textColor=colors.white,
+        )
         story = [
             Paragraph("SME Financial Dashboard — Transaction report", title_style),
             Spacer(1, 4 * mm),
@@ -251,7 +266,15 @@ class ExportService:
             Paragraph("<b>Cash-flow totals by currency</b>", styles["Heading2"]),
         ]
 
-        summary_data = [["Currency", "Inflows", "Outflows", "Net", "Transactions"]]
+        summary_data = [
+            [
+                Paragraph("Currency", header_style),
+                Paragraph("Inflows", header_style),
+                Paragraph("Outflows", header_style),
+                Paragraph("Net", header_style),
+                Paragraph("Transactions", header_style),
+            ]
+        ]
         for item in report.current.totals:
             summary_data.append(
                 [
@@ -267,8 +290,6 @@ class ExportService:
             TableStyle(
                 [
                     ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#26384A")),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
                     ("GRID", (0, 0), (-1, -1), 0.35, colors.HexColor("#AAB4BE")),
                     ("ALIGN", (1, 1), (-1, -1), "RIGHT"),
                     ("PADDING", (0, 0), (-1, -1), 5),
@@ -278,26 +299,27 @@ class ExportService:
         story.extend([summary_table, Spacer(1, 5 * mm)])
         story.append(Paragraph("<b>Filtered transactions</b>", styles["Heading2"]))
 
+        detail_headers = [
+            "Date",
+            "Currency",
+            "Amount",
+            "Direction",
+            "Account",
+            "Category",
+            "Counterparty",
+            "Reference",
+            "Description",
+        ]
         detail_data = [
-            [
-                "Date",
-                "Currency",
-                "Amount",
-                "Direction",
-                "Account",
-                "Category",
-                "Counterparty",
-                "Reference",
-                "Description",
-            ]
+            [Paragraph(escape(header), header_style) for header in detail_headers]
         ]
         for transaction, category_name in rows:
             detail_data.append(
                 [
-                    transaction.transaction_date.isoformat(),
-                    escape(transaction.currency),
-                    format(transaction.amount, ",.6f"),
-                    transaction.direction.value,
+                    Paragraph(escape(transaction.transaction_date.isoformat()), cell_style),
+                    Paragraph(escape(transaction.currency), cell_style),
+                    Paragraph(format(transaction.amount, ",.6f"), cell_style),
+                    Paragraph(escape(transaction.direction.value), cell_style),
                     Paragraph(escape(transaction.account_name or ""), cell_style),
                     Paragraph(escape(category_name or "Uncategorized"), cell_style),
                     Paragraph(escape(transaction.counterparty or ""), cell_style),
@@ -306,21 +328,32 @@ class ExportService:
                 ]
             )
         if not rows:
-            detail_data.append(["No matching transactions", "", "", "", "", "", "", "", ""])
+            detail_data.append(
+                [Paragraph("No matching transactions", cell_style)]
+                + [Paragraph("", cell_style) for _ in range(8)]
+            )
         detail_table = Table(
             detail_data,
             repeatRows=1,
-            colWidths=[20 * mm, 15 * mm, 25 * mm, 20 * mm, 25 * mm, 27 * mm, 32 * mm, 27 * mm, 55 * mm],
+            colWidths=[
+                20 * mm,
+                15 * mm,
+                25 * mm,
+                20 * mm,
+                25 * mm,
+                27 * mm,
+                32 * mm,
+                27 * mm,
+                55 * mm,
+            ],
             hAlign="LEFT",
         )
         detail_table.setStyle(
             TableStyle(
                 [
                     ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#26384A")),
-                    ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
-                    ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
-                    ("FONTSIZE", (0, 0), (-1, -1), 7),
                     ("GRID", (0, 0), (-1, -1), 0.3, colors.HexColor("#C5CDD5")),
+                    ("FONTSIZE", (0, 0), (-1, -1), 7),
                     ("VALIGN", (0, 0), (-1, -1), "TOP"),
                     ("PADDING", (0, 0), (-1, -1), 4),
                 ]
@@ -382,15 +415,10 @@ class ImportHistoryService:
         offset: int = 0,
     ) -> list[ImportRow]:
         verified = _verified_context(session, context, Permission.VIEW)
+        if not isinstance(batch_id, UUID):
+            raise ReportingError("Batch id must be a UUID.")
         if isinstance(limit, bool) or not isinstance(limit, int) or not 1 <= limit <= 500:
             raise ReportingError("Import row limit must be an integer from 1 to 500.")
-        if isinstance(batch_id, str):
-            try:
-                batch_id = UUID(batch_id)
-            except ValueError as exc:
-                raise ReportingError("Import batch id must be a UUID.") from exc
-        if not isinstance(batch_id, UUID):
-            raise ReportingError("Import batch id must be a UUID.")
         if isinstance(offset, bool) or not isinstance(offset, int) or offset < 0:
             raise ReportingError("Import row offset must be a non-negative integer.")
         batch_exists = session.scalar(

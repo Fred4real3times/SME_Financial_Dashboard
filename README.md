@@ -104,17 +104,12 @@ Ambiguous import rows stay in the REVIEW queue until an ADMIN or ACCOUNTANT reco
 - Current main commit at this snapshot: \`41cf26cb5231ceb3e540f402fb9b944048a2315e\`.
 - Post-merge GitHub Actions run [42634994455](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42634994455) passed on Python 3.11, 3.12 and 3.13; each matrix job passed Ruff, 110 tests, Alembic round-trip and SQLite foreign_key_check.
 - Manual browser-based Streamlit smoke testing and independent external security review remain outstanding.
-- Phase 5 dashboard is integrated into main. It excludes soft-deleted and unvalidated transactions, keeps Decimal calculations per currency, and only displays closing balance when a unique verified account/currency opening snapshot supports it.
-- The Phase 5 headless Streamlit smoke test is in draft PR #7; its test branch passed GitHub Actions run 42640599864 with 121 tests per Python version.
+- Phase 5 dashboard work is in progress. The dashboard excludes soft-deleted and unvalidated transactions, keeps Decimal calculations per currency, and only displays closing balance when a unique verified account/currency opening snapshot supports it.
 
 
 ### Phase 5 dashboard verification — 2026-11-09
 The Phase 5 dashboard branch head \`62eb759f2c5c480a7b7385d6939d1d7377bc398e\` passed GitHub Actions run [42637974318](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42637974318): Python 3.11, 3.12 and 3.13 each passed Ruff, 120 tests, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign_key_check. PR #6 remains a draft. Manual browser smoke testing and independent security review remain open.
 
 
-## Phase 6 — exports and history (in progress)
-The dashboard now has filtered CSV and PDF export preparation/download controls. Exports reuse the active DashboardFilters and company context, include only validated non-deleted rows, and are capped at 10,000 rows. CSV formula-like text is neutralized for spreadsheet safety. PDF includes filter metadata, per-currency totals and detailed rows. Preparing an export creates an audit event.
-
-Import history reuses ImportBatch/ImportRow and displays row status, source provenance and review metadata. The audit trail is company-scoped and restricted to ADMIN/ACCOUNTANT; the initial view displays metadata only.
-
-Phase 6 is under CI validation. No phase completion or release acceptance is claimed until the exact branch head passes the test matrix and the UI workflow is manually verified.
+### Phase 6 — Exports and history (implementation in progress)
+The Phase 6 branch adds filtered CSV/PDF export, spreadsheet-formula neutralization, company-scoped import batch/row history and restricted audit history. Exports reuse the exact dashboard filters and include only validated, non-deleted transactions. Automated verification and release status will be recorded after the branch-head CI completes.

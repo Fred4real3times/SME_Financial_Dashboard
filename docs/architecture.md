@@ -41,9 +41,9 @@ TransactionService.list(filters, CompanyContext) → scoped DTOs.
 TransactionService.update_category(transaction_id, category_id, actor_context) → updated DTO + audit.
 Category/Rule services create/update with validation and audit.
 DashboardService.report(filters, CompanyContext) → Decimal KPIs, previous-period comparison, monthly values, spend rankings and conditional balance state. AccountSnapshotService creates/list opening-balance evidence with role checks and audit.
-ExportService.export_csv/export_pdf(filters, CompanyContext) → filtered CSV/PDF artifact with content type, filename and row count. Both call the same validated transaction filter query used by DashboardService.
-ImportHistoryService.list_batches/list_rows(CompanyContext) → company-scoped import provenance.
-AuditService.list_events(CompanyContext) → company-scoped events; requires VIEW_AUDIT.
+ExportService.export_csv/export_pdf(filters, CompanyContext) → bounded, filtered CSV/PDF bytes; same DashboardFilters and tenant scope as dashboard.
+ImportHistoryService.list_batches/list_rows(CompanyContext) → company-scoped paginated import provenance.
+AuditService.list_events(CompanyContext) → company-scoped paginated audit metadata; ADMIN/ACCOUNTANT only.
 No public HTTP API required for MVP.
 
 ## Approved permissions
@@ -151,12 +151,11 @@ Workspace service inputs now normalize invalid values into explicit WorkspaceErr
 - Plotly chart values may be converted to float only for visualization; all totals and reconciliations remain Decimal.
 
 
-## Phase 6 export and history contract
-- Export filters are exactly DashboardFilters: inclusive start/end dates and optional currency/account/category/direction. The selected company is always resolved from active workspace membership; a caller-supplied company_id is never trusted without re-resolution.
-- Exports include only validated, non-deleted transactions. No currency conversion or cross-currency aggregation is performed.
-- CSV includes transaction date, value date, positive Decimal amount, currency, direction, account, category, description, counterparty and reference. Text cells are prefixed with an apostrophe when formula-like content is detected after leading whitespace/control characters; numeric amount fields remain numeric text.
-- PDF includes company name, selected period/filters, cash-flow totals grouped by currency and the exact filtered transaction detail. XML text is escaped and long cell contents wrap.
-- Export generation is capped at 10,000 rows. The service reads at most 10,001 rows to detect over-limit results and refuses to create an oversized artifact.
-- Each prepared export records an AuditEvent with format, filename, row count and filters. This event records preparation, not proof that the user completed a browser download.
-- Import history is a read projection over ImportBatch/ImportRow, preserving original source metadata and PDF page/table/row provenance.
-- AuditService only returns the active company's events and enforces VIEW_AUDIT. The first UI version exposes event metadata and does not render before_json/after_json payloads.
+## Phase 6 exports and history
+- CSV/PDF export must call the same DashboardService filter contract and re-resolve CompanyContext and EXPORT permission. Exported rows are validated, non-deleted and never combined across currencies.
+- Limit the export query to \`MAX_EXPORT_ROWS + 1\` at SQL level; fail closed if the bound is exceeded. Do not stream unbounded row sets into application memory.
+- Neutralize CSV formula injection in every user-controlled text field, including text preceded by whitespace/control characters. Keep monetary values as fixed-point Decimal strings.
+- PDF generation escapes all dynamic text, wraps table cells and includes company/filter metadata, per-currency totals and selected transaction details.
+- Export preparation is audit logged with only export metadata and selected filters; avoid copying full transaction payloads into AuditEvent.
+- Import history and audit history queries always scope by verified company context, with bounded pagination.
+- Audit events are visible only to roles with VIEW_AUDIT (ADMIN/ACCOUNTANT in MVP). VIEWER retains read/export and import-history access but not audit-log access.

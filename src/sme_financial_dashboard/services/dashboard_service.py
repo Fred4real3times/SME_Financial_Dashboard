@@ -478,13 +478,13 @@ class DashboardService:
         *,
         limit: int | None = None,
     ) -> list[tuple[Transaction, str | None]]:
-        """Return exactly the validated transaction rows covered by report filters."""
+        """Return filtered rows, with an optional SQL-side limit for bounded exports."""
+        verified = _verified_context(session, context)
+        validated = _validated_filters(session, verified, filters)
         if limit is not None and (
             isinstance(limit, bool) or not isinstance(limit, int) or limit < 1
         ):
-            raise DashboardError("Transaction list limit must be a positive integer.")
-        verified = _verified_context(session, context)
-        validated = _validated_filters(session, verified, filters)
+            raise DashboardError("Transaction query limit must be a positive integer.")
         return _load_rows(session, verified.company_id, validated, limit=limit)
 
     @staticmethod
