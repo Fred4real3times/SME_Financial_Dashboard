@@ -5,6 +5,7 @@ from datetime import UTC, date, datetime
 from decimal import Decimal
 
 import pytest
+from sqlalchemy.exc import IntegrityError
 
 from conftest import seed_workspace
 from sme_financial_dashboard.db.models import (
@@ -308,29 +309,50 @@ def test_balance_is_unavailable_without_required_scope_snapshot_or_unfiltered_fl
     ).current.balance.status is BalanceStatus.INCOMPATIBLE_FILTERS
 
 
-def test_conflicting_latest_verified_snapshots_make_closing_balance_unavailable(session):
-    _workspace, user, company, context = _context(session, suffix="snapshot-conflict")
-    for amount, label in [("100.00", "first"), ("110.00", "second")]:
-        session.add(
-            AccountSnapshot(
-                company_id=company.id,
-                account_name="Operating",
-                as_of_date=date(2026, 1, 1),
-                currency="XAF",
-                opening_balance=Decimal(amount),
-                is_verified=True,
-                source_description=label,
-                created_by_user_id=user.id,
-            )
-        )
+def test_database_rejects_duplicate_verified_snapshots_for_same_account_date_currency(session):
+    _workspace, user, company, context = _context(session, suffix="snapshot-unique")
+    first = AccountSnapshot(
+        company_id=company.id,
+        account_name="Operating",
+        as_of_date=date(2026, 1, 1),
+        currency="XAF",
+        opening_balance=Decimal("100.00"),
+        is_verified=True,
+        source_description="First verified statement",
+        created_by_user_id=user.id,
+    )
+    session.add(first)
     session.flush()
+
+    duplicate = AccountSnapshot(
+        company_id=company.id,
+        account_name="Operating",
+        as_of_date=date(2026, 1, 1),
+        currency="XAF",
+        opening_balance=Decimal("110.00"),
+        is_verified=True,
+        source_description="Conflicting concurrent submission",
+        created_by_user_id=user.id,
+    )
+    with pytest.raises(IntegrityError):
+        with session.begin_nested():
+            session.add(duplicate)
+            session.flush()
+
+    assert session.query(AccountSnapshot).filter_by(
+        company_id=company.id,
+        account_name="Operating",
+        as_of_date=date(2026, 1, 1),
+        currency="XAF",
+        is_verified=True,
+    ).count() == 1
     report = DashboardService.report(
         session,
         context,
         _filters(currency="XAF", account_name="Operating"),
     )
-    assert report.current.balance.status is BalanceStatus.CONFLICTING_SNAPSHOTS
-    assert report.current.balance.closing_balance is None
+    assert report.current.balance.status is BalanceStatus.AVAILABLE
+    assert report.current.balance.opening_balance == Decimal("100.000000")
 
 
 def test_snapshot_creation_is_audited_company_scoped_and_validated(session):

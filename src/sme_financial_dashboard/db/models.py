@@ -23,6 +23,7 @@ from sqlalchemy import (
     String,
     UniqueConstraint,
     Uuid,
+    text,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -406,6 +407,15 @@ class AccountSnapshot(Base):
             "account_name",
             "as_of_date",
             "currency",
+        ),
+        Index(
+            "uq_verified_snapshot_company_account_date_currency",
+            "company_id",
+            "account_name",
+            "as_of_date",
+            "currency",
+            unique=True,
+            sqlite_where=text("is_verified = 1"),
         ),
     )
 

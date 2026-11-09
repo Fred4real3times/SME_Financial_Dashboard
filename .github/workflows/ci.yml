@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   test:
-    name: Python ${{ matrix.python-version }} checks
+    name: Linux Python ${{ matrix.python-version }} checks
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
@@ -41,15 +41,33 @@ jobs:
           alembic check
           alembic downgrade base
           alembic upgrade head
-          python - <<'PY'
-          import os
-          import sqlite3
-          from pathlib import Path
-          url = os.environ["DATABASE_URL"]
-          path = url.removeprefix("sqlite:///")
-          db = sqlite3.connect(path)
-          violations = db.execute("PRAGMA foreign_key_check").fetchall()
-          assert not violations, violations
-          print("SQLite foreign_key_check: clean")
-          db.close()
-          PY
+          python -c "import os,sqlite3; db=sqlite3.connect(os.environ['DATABASE_URL'].removeprefix('sqlite:///')); violations=db.execute('PRAGMA foreign_key_check').fetchall(); assert not violations, violations; print('SQLite foreign_key_check: clean'); db.close()"
+
+  windows-smoke:
+    name: Windows Python 3.11 checks
+    runs-on: windows-latest
+    env:
+      APP_ENV: test
+      DATABASE_URL: sqlite:///./.data/ci-test.db
+      SESSION_SECRET: "ci-test-secret-not-used-for-production-1234567890"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+      - name: Install project and development dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+      - name: Lint
+        run: ruff check .
+      - name: Unit and integration tests
+        run: pytest -q
+      - name: Migration round-trip
+        run: |
+          alembic upgrade head
+          alembic check
+          alembic downgrade base
+          alembic upgrade head
+          python -c "import os,sqlite3; db=sqlite3.connect(os.environ['DATABASE_URL'].removeprefix('sqlite:///')); violations=db.execute('PRAGMA foreign_key_check').fetchall(); assert not violations, violations; print('SQLite foreign_key_check: clean'); db.close()"

@@ -36,7 +36,7 @@ Soft deletion is not physical erasure: retain transaction, source provenance and
 Authorization uses one workspace-wide role per membership, consistently enforced across all companies in the workspace. ADMIN and ACCOUNTANT can soft-delete; only ADMIN can restore. Deletion requires reason and produces append-only audit events. Partial imports require explicit confirmation; REVIEW rows stay quarantined and out of all financial totals until resolved. Ambiguous identical rows without reference require manual review. One primary category only; no allocation/splitting. Security tests must cover all of these transitions and role boundaries.
 
 ## PDF upload and parsing threats — approved MVP scope
-- Malformed or malicious PDF/parser abuse: allowlist .pdf, verify actual file signature/content, enforce byte/page/table/row/character limits, pin and review parser dependency, reject malformed or over-limit documents. The MVP does not enforce a hard wall-clock CPU timeout; parser execution is limited to the local single-instance app and is not a public upload service.
+- Malformed or malicious PDF/parser abuse: allowlist .pdf, verify actual file signature/content, enforce byte/page/table/row/character limits, pin and review parser dependency, and reject malformed or over-limit documents. CSV/XLSX/PDF parsing now runs in a disposable child process with a 30-second wall-clock deadline; the parent terminates the worker on timeout. This is process isolation for time control, not an OS sandbox or memory quota.
 - Filename and MIME are untrusted; validate actual file content.
 - Encrypted/password-protected PDFs are rejected; do not request or store passwords.
 - Extract text/tables only; never execute PDF JavaScript/actions or extract/open embedded attachments.
@@ -53,4 +53,4 @@ Automated hardening added:
 - SQLite fingerprint lookup chunks of 500 and batched transaction flushes with source-row links updated only after transaction inserts flush.
 - Integration coverage for idempotent repeat commit and rollback of the whole batch on a concurrent fingerprint collision.
 
-Residuals: no hard wall-clock parser timeout or automatic cleanup/expiry for abandoned PREVIEWED batches; no external penetration test or manual browser-based Streamlit smoke test has been performed in this environment. The app is local-first and should not be exposed publicly before further operational controls and independent review.
+Residuals: parser execution has a 30-second wall-clock limit but no OS-level memory sandbox; no automatic cleanup/expiry for abandoned PREVIEWED batches; no external penetration test or manual browser-based Streamlit smoke test has been performed in this environment. The app is local-first and should not be exposed publicly before further operational controls and independent review.

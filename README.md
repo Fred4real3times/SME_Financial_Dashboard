@@ -22,28 +22,72 @@ See `docs/` for the approved scope, architecture, data dictionary, threat model 
 - Windows 10/11, Linux or WSL2
 - SQLite for the local single-instance MVP
 
-## Windows PowerShell setup
+## Installation (Windows / WSL2)
 
+**Requirements:** Python 3.11–3.13.
+
+### 1. Download the project
+
+```bash
+git clone --branch feat/phase-7-qa-tooling https://github.com/Fred4real3times/SME_Financial_Dashboard.git
+cd SME_Financial_Dashboard
+```
+
+### 2. Create and activate the virtual environment
+
+**Windows PowerShell**
 ```powershell
 py -3.11 -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install --upgrade pip
-pip install -r requirements-dev.txt
-Copy-Item .env.example .env
-# Generate a local signing secret and paste it into SESSION_SECRET in .env:
-python scripts/generate_session_secret.py
-python -m pip install -e .
 ```
 
-For WSL/Linux, replace venv activation with `source .venv/bin/activate` and copy `.env.example` to `.env`.
+**WSL2 / Linux**
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
 
-## Database
+### 3. Install and configure
 
-The default database URL is `sqlite:///./.data/sme_financial_dashboard.db`. The directory is created automatically. Apply schema migrations with:
+Run these commands on either platform:
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install -e ".[dev]"
+```
+
+Create the local configuration file:
+
+**Windows PowerShell**
+```powershell
+Copy-Item .env.example .env
+```
+
+**WSL2 / Linux**
+```bash
+cp .env.example .env
+```
+
+Generate a session secret:
+
+```bash
+python scripts/generate_session_secret.py
+```
+
+Copy the value displayed into `.env` after `SESSION_SECRET=`. Keep `.env` private; never commit it.
+
+### 4. Initialize and launch
 
 ```bash
 alembic upgrade head
+streamlit run app.py
 ```
+
+Open the local URL displayed by Streamlit. The default SQLite database is created automatically under `.data/`.
+  
+## Database
+
+The default database URL is `sqlite:///./.data/sme_financial_dashboard.db`. The directory is created automatically. The installation steps above apply the required migrations.
 
 ## Tests and lint
 
@@ -55,9 +99,9 @@ ruff format --check .
 
 ## Current implementation status
 
-Phase 1 foundation includes project metadata, exact dependency pins, environment configuration, money-domain primitives, SQLAlchemy models, SQLite session factory, workspace RBAC/company scope, company-scoped repositories, an Alembic initial migration and foundation tests.
+The current development branch contains the approved local-first MVP workflows: authentication and workspace/company management; CSV/XLSX/digital-PDF import preview, validation and confirmed partial commit; REVIEW resolution; categorization rules; currency-separated dashboard and conditional opening-balance calculations; filtered CSV/PDF exports and history; synthetic SME data; SQLite backup/restore; verified-snapshot uniqueness; and time-bounded parser execution.
 
-Phase 2 adds first-run ADMIN bootstrap, Argon2id password hashing, HMAC-signed session tokens backed by revocable database sessions, workspace/company creation, membership and role management, and an authenticated Streamlit shell. Import adapters, transaction services, dashboards and exports remain later vertical phases. A passing foundation or Phase 2 test suite does not mean the end-to-end MVP is complete.
+`main` and the development branch remain separate until the open pull request is merged. Automated CI does not replace clean Windows/WSL installation, interactive CLI, browser visual/workflow testing, manual restore or independent security review. The application remains a local single-instance SQLite MVP, not certified accounting software or a hosted multi-user platform.
 
 ## Security notes
 
@@ -90,7 +134,7 @@ Phase 3 branch head 64e50231bf228e251fb529b20655b89eba62b6cf passed GitHub Actio
 
 
 ### Phase 3 QA hardening
-CSV rows are streamed; XLSX ZIP entry, expanded-size, compression-ratio and column limits are checked; PDF encryption, table widths, page/table/row/character bounds are checked. SQLite duplicate lookups are chunked and transaction commits batch inserts before linking staged source rows. The parser has no hard wall-clock CPU timeout and is intended for the local single-instance app only, not a public upload endpoint.
+CSV rows are streamed; XLSX ZIP entry, expanded-size, compression-ratio and column limits are checked; PDF encryption, table widths, page/table/row/character bounds are checked. SQLite duplicate lookups are chunked and transaction commits batch inserts before linking staged source rows. Statement extraction runs in a disposable child process with a 30-second wall-clock limit. The worker is terminated on timeout. This is not an OS sandbox or memory quota; keep the application local and do not expose upload parsing as a public service.
 
 
 ## Categories, rules and manual import review (Phase 4)
@@ -117,3 +161,36 @@ The Phase 6 branch adds filtered CSV/PDF export, spreadsheet-formula neutralizat
 
 ### Phase 6 automated verification — integrated into main
 Follow-up PR #10 [fixes the Streamlit history headings and CI/test expectations](https://github.com/Fred4real3times/SME_Financial_Dashboard/pull/10) and is merged. Main commit \`bead79a0cb5930cd6e63eb5674ab9c2a91a3ef15\` passed post-merge GitHub Actions run [42647921772](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42647921772): 136 tests per Python 3.11/3.12/3.13 matrix job, Ruff, Alembic round-trip and SQLite foreign_key_check. Manual browser visual testing and independent external security review remain open.
+
+### Phase 7 — Synthetic QA dataset
+Create a separate fictional SQLite demo database (never overwrite an existing database):
+
+\`\`\`powershell
+python scripts/generate_synthetic_data.py --confirm-synthetic-only
+\`\`\`
+
+The script prompts for a synthetic ADMIN password and creates three SMEs (retail, services, manufacturing) with 12 months of XAF activity and quarterly USD bank-fee rows. Each company has 100 valid transactions plus one INVALID, one DUPLICATE and two reference-less REVIEW rows. Only VALID rows are committed; held rows remain in import history. The default output is \`.data/sme_financial_dashboard_synthetic.db\`.
+
+### SQLite backup and restore
+
+\`\`\`powershell
+python scripts/sqlite_backup_restore.py backup --source .data/sme_financial_dashboard_synthetic.db --destination .data/backups/sme-synthetic-backup.db
+python scripts/sqlite_backup_restore.py restore --backup .data/backups/sme-synthetic-backup.db --destination .data/sme_financial_dashboard_synthetic.db --replace-existing
+\`\`\`
+
+Restore only after stopping Streamlit. The command verifies SQLite integrity and foreign keys and prints a SHA-256 checksum. Backups contain confidential financial and authentication data; the utility does not encrypt them. Store them on protected/encrypted storage.
+
+
+### Phase 7 verification — automated feature-branch evidence
+The Phase 7 synthetic dataset and SQLite backup/restore work on branch \`feat/phase-7-qa-tooling\`, head \`4687979753a7f6f4f444f2b541eac965a6d3cd2c\`, passed GitHub Actions run [42651239061](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42651239061): Ruff, 142 tests per Python 3.11/3.12/3.13 job, Alembic round-trip and SQLite foreign_key_check. Per SME profile, 100 valid transactions are committed and the 4 noisy rows remain held (1 INVALID, 1 DUPLICATE, 2 REVIEW). This is feature-branch evidence pending review/merge. The interactive CLI has not been run manually; browser visual QA and independent external security review remain open.
+
+
+The Phase 7 QA report is historical evidence for the implementation commit it reviewed. The current Phase 7–8 candidate is recorded below; automated CI has passed on its exact branch head. Manual release gates remain separate.
+
+## Release-candidate status — 2026-11-09
+
+- Candidate branch: `feat/phase-7-qa-tooling`; exact head: `ea4036801dd3041a3a1d689f38d3289201fefbfb`.
+- Exact-head GitHub Actions run [42670582232](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42670582232) passed: 148 tests on Linux Python 3.11, 3.12 and 3.13, and Windows Python 3.11; Ruff, Alembic migration round-trip and SQLite foreign-key checks also passed.
+- Phase 7 synthetic data and SQLite backup/restore, plus Phase 8 verified-snapshot uniqueness and parser time limits, have automated test coverage.
+- **Not yet release-approved:** clean Windows and WSL2 installation, interactive synthetic CLI, manual browser workflow/visual QA, manual backup/restore, and independent external security review are still required.
+- Keep use local and single-instance with SQLite. Do not expose the Streamlit app publicly. Backup data must be stored on encrypted, access-controlled storage.
