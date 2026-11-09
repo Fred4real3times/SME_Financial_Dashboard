@@ -383,3 +383,41 @@ def test_reference_less_row_reimport_after_manual_acceptance_returns_to_review(s
         for row in second_preview.sample_rows
         for issue in row.issues
     )
+
+
+
+def test_manual_review_reference_must_be_unique_company_wide(session):
+    _workspace, _user, company, context = _context(session, suffix="unique-ref-scope")
+    preview = _review_preview(session, context)
+    row = session.scalar(
+        select(ImportRow).where(
+            ImportRow.import_batch_id == preview.preview_id,
+            ImportRow.row_status == ImportRowStatus.REVIEW,
+        )
+    )
+    existing = Transaction(
+        company_id=company.id,
+        transaction_date=date(2025, 12, 31),
+        amount=Decimal("50.00"),
+        currency="XAF",
+        direction=Direction.OUTFLOW,
+        counterparty="Other supplier",
+        reference="MANUAL-REVIEW-001",
+        fingerprint_version=1,
+        source_fingerprint=hashlib.sha256(b"existing-reference").hexdigest(),
+        is_validated=True,
+    )
+    session.add(existing)
+    session.flush()
+    with pytest.raises(ReviewResolutionError, match="already used"):
+        ReviewService.resolve(
+            session,
+            context,
+            row_id=row.id,
+            decision=ReviewDecision.CORRECTED_AND_ACCEPTED,
+            note="Reference is already assigned to another transaction.",
+            corrected_values=_corrected_values("MANUAL-REVIEW-001"),
+        )
+    session.refresh(row)
+    assert row.row_status is ImportRowStatus.REVIEW
+    assert row.transaction_id is None
