@@ -109,3 +109,9 @@ Ambiguous import rows stay in the REVIEW queue until an ADMIN or ACCOUNTANT reco
 
 ### Phase 5 dashboard verification — 2026-11-09
 The Phase 5 dashboard branch head \`62eb759f2c5c480a7b7385d6939d1d7377bc398e\` passed GitHub Actions run [42637974318](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42637974318): Python 3.11, 3.12 and 3.13 each passed Ruff, 120 tests, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign_key_check. PR #6 remains a draft. Manual browser smoke testing and independent security review remain open.
+
+
+Phase 5 also adds a headless Streamlit UI smoke test using \`streamlit.testing.v1.AppTest\`. It executes the real authenticated app entry point against an isolated synthetic SQLite database and checks the rendered net KPI and verified closing balance. This does not replace manual browser QA.
+
+
+Phase 5 headless UI smoke evidence: GitHub Actions run [42640179185](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42640179185) passed on Python 3.11, 3.12 and 3.13 with 121 tests per version, Ruff, Alembic round-trip and SQLite foreign_key_check. The new Streamlit AppTest executes the real \`app.py\` against synthetic data and verifies the net KPI and verified closing-balance metric. Manual browser visual testing and independent security review are still outstanding.
