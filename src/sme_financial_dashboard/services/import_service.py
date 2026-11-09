@@ -631,6 +631,7 @@ class ImportService:
                         is_validated=True,
                     )
                     session.add(transaction)
+                    session.flush()
                     row.transaction_id = transaction.id
                     transactions.append(transaction)
                 session.flush()
