@@ -53,3 +53,10 @@ A-10 Africa/Douala proposed demo timezone, configurable per company.
 
 ## Decision addendum — 2026-11-09 (owner decisions)
 The following decisions are accepted and supersede conflicting provisional assumptions: (1) transaction deletion is SOFT DELETE only: mark inactive/deleted with actor, timestamp and reason; retain original row, provenance and audit history; exclude inactive transactions from ordinary KPIs/exports by default, with authorized history access. Hard deletion is not an ordinary user operation. (2) Ambiguous import rows use REVIEW: stage and isolate them for manual resolution; do not auto-import or silently discard them; valid unambiguous rows may proceed only if batch preview clearly separates review rows and the user confirms the partial outcome. (3) Access model is WORKSPACE: one user may belong to a workspace and access multiple companies through workspace membership/role; company-level authorization and company scoping remain mandatory. The exact role scope (workspace-wide vs per-company overrides) remains to be finalized below.
+
+## Final owner decisions — 2026-11-09
+- Workspace role scope: one role per user membership applies uniformly to every company in that workspace. Company-level access remains restricted to companies in that workspace.
+- Soft deletion: ADMIN and ACCOUNTANT may soft-delete transactions; ADMIN alone may restore. Deletion reason required; retain record, provenance and audit.
+- Ambiguous import: allow partial commit only after explicit confirmation; valid unambiguous rows commit, REVIEW rows remain staged and excluded from financial totals until resolved.
+- Identical rows without a distinguishing reference: REVIEW manually; never silently deduplicate.
+- Categorization: exactly one primary category per transaction in MVP; no split allocation.
