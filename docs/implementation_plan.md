@@ -81,3 +81,7 @@ Added automated GitHub Actions checks for Python 3.11–3.13: dependency install
 
 ## Phase 3 execution update — 2026-11-09
 The import vertical is being implemented on feat/phase-3-import-engine, stacked on the validated Phase 2 branch. Current scope: bounded CSV/XLSX/PDF parsers; explicit mapping and locale settings; Decimal validation; versioned fingerprint; company-authorized preview staging; duplicate and REVIEW classification; explicit partial commit; atomic transaction/audit creation; Streamlit upload/mapping/confirmation UI. Phase completion requires green CI on the exact branch head and evidence for IMP-12..IMP-19 and PDF-01..PDF-08. No outlier warning is enabled yet because its threshold policy remains unapproved.
+
+
+## Phase 3 CI verification — 2026-11-09
+Branch-head commit 64e50231bf228e251fb529b20655b89eba62b6cf passed GitHub Actions run 42621129042 on Python 3.11, 3.12 and 3.13. Each job passed Ruff, 76 pytest tests, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign_key_check. The Streamlit upload limit is also capped at 10 MiB through .streamlit/config.toml. PR #2 remains a draft stacked on Phase 2; no merge has occurred. Manual browser workflow testing, independent security review and exhaustive negative tests for all PDF/XLSX resource limits remain pending before marking the phase fully accepted.
