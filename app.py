@@ -1532,7 +1532,7 @@ if companies and dashboard_filters is not None:
                 key=f"download_pdf_{export_signature}",
             )
 
-    st.markdown("**Import history**")
+    st.subheader("Import history")
     try:
         with session_factory() as db:
             company_context = resolve_company_context(
