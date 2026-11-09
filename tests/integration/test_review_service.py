@@ -366,10 +366,10 @@ def test_reference_less_row_reimport_after_manual_acceptance_returns_to_review(s
     assert first_row.review_decision is ReviewDecision.CORRECTED_AND_ACCEPTED
 
     content = (
-        "Date;Amount;Currency;Direction;Reference;Counterparty\n"
-        "01/01/2026;100,00;XAF;CREDIT;;Client\n"
-        "01/01/2026;100,00;XAF;CREDIT;;Client\n"
-    ).encode()
+        b"Date;Amount;Currency;Direction;Reference;Counterparty\n"
+        b"01/01/2026;100,00;XAF;CREDIT;;Client\n"
+        b"01/01/2026;100,00;XAF;CREDIT;;Client\n"
+    )
     second_preview = ImportService.preview(
         session,
         file_bytes=content,
