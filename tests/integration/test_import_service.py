@@ -415,3 +415,26 @@ def test_concurrent_fingerprint_collision_rolls_back_entire_batch(session):
     assert batch.status.value == "PREVIEWED"
     assert all(row.transaction_id is None for row in stored_rows)
     assert all(row.row_status is ImportRowStatus.VALID for row in stored_rows)
+
+
+
+def test_preview_chunks_duplicate_fingerprint_lookup_for_large_batches(session):
+    _workspace, _user, _company, context = _context(session, suffix="large-batch")
+    header = "Date;Amount;Currency;Direction;Reference;Counterparty\n"
+    rows = [
+        f"01/01/2026;{index},00;XAF;CREDIT;BATCH-{index};Client {index}\n"
+        for index in range(1, 1201)
+    ]
+    content = (header + "".join(rows)).encode()
+    preview = ImportService.preview(
+        session,
+        file_bytes=content,
+        file_name="large-batch.csv",
+        mapping=_mapping(),
+        context=context,
+    )
+    assert preview.total_count == 1200
+    assert preview.valid_count == 1200
+    assert preview.invalid_count == 0
+    assert preview.duplicate_count == 0
+    assert preview.review_count == 0
