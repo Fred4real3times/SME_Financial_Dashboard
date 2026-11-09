@@ -492,14 +492,16 @@ class ImportService:
                     })
 
         fingerprints = list(fingerprint_groups)
-        existing = set()
-        if fingerprints:
-            existing = set(
+        existing: set[str] = set()
+        # Keep each IN clause below SQLite's historical 999-parameter default.
+        for offset in range(0, len(fingerprints), 500):
+            fingerprint_chunk = fingerprints[offset : offset + 500]
+            existing.update(
                 session.scalars(
                     select(Transaction.source_fingerprint).where(
                         Transaction.company_id == verified.company_id,
                         Transaction.fingerprint_version == FINGERPRINT_VERSION,
-                        Transaction.source_fingerprint.in_(fingerprints),
+                        Transaction.source_fingerprint.in_(fingerprint_chunk),
                     )
                 ).all()
             )
@@ -626,6 +628,7 @@ class ImportService:
         try:
             with session.begin_nested():
                 transactions: list[Transaction] = []
+                row_transaction_links: list[tuple[ImportRow, Transaction]] = []
                 for row in batch.rows:
                     if row.row_status not in {ImportRowStatus.VALID, ImportRowStatus.VALID_WITH_WARNING}:
                         continue
@@ -650,9 +653,12 @@ class ImportService:
                         is_validated=True,
                     )
                     session.add(transaction)
-                    session.flush()
-                    row.transaction_id = transaction.id
                     transactions.append(transaction)
+                    row_transaction_links.append((row, transaction))
+                # Insert all referenced transactions first, then update source-row FKs.
+                session.flush()
+                for row, transaction in row_transaction_links:
+                    row.transaction_id = transaction.id
                 session.flush()
                 has_held_rows = bool(batch.invalid_count or batch.duplicate_count or batch.review_count)
                 old_status = batch.status.value
