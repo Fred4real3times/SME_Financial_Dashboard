@@ -31,3 +31,6 @@ SQLite lacks PostgreSQL row-level security. This is a local single-instance demo
 
 ## Decision addendum — 2026-11-09
 Soft deletion is not physical erasure: retain transaction, source provenance and audit; ordinary dashboards/exports exclude deleted rows. Only authorized service actions may mark/restore lifecycle state, and each transition is audited. Ambiguous rows remain quarantined in review and must not be treated as valid financial transactions until an authorized human resolves them. Workspace membership grants access to multiple companies, but never bypasses company-level authorization. Role scope and restore permissions remain pending.
+
+## Final owner decisions — 2026-11-09
+Authorization uses one workspace-wide role per membership, consistently enforced across all companies in the workspace. ADMIN and ACCOUNTANT can soft-delete; only ADMIN can restore. Deletion requires reason and produces append-only audit events. Partial imports require explicit confirmation; REVIEW rows stay quarantined and out of all financial totals until resolved. Ambiguous identical rows without reference require manual review. One primary category only; no allocation/splitting. Security tests must cover all of these transitions and role boundaries.
