@@ -94,3 +94,7 @@ These criteria remain BLOCKED until CI/local test evidence for the Phase 2 branc
 
 ## CI gate
 A green GitHub Actions run for the tested commit is required before a phase is reported complete. The CI job must run the whole test suite, Ruff checks and fresh-database migration round-trip on each supported Python minor version.
+
+
+## Phase 2 review note
+The first CI run identified Ruff findings (unused imports, an unused test variable and a forward-reference annotation). These were corrected in the follow-up commit. The lint profile was narrowed to correctness/security-adjacent rules rather than enforcing import layout and line-length style at this stage.

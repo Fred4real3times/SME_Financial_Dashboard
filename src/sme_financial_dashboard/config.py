@@ -18,7 +18,7 @@ class Settings:
     session_ttl_hours: int = 12
 
     @classmethod
-    def from_environment(cls) -> "Settings":
+    def from_environment(cls) -> Settings:
         load_dotenv(override=False)
         database_url = os.getenv("DATABASE_URL", "sqlite:///./.data/sme_financial_dashboard.db")
         app_env = os.getenv("APP_ENV", "development").strip().lower()

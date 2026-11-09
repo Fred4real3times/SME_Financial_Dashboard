@@ -100,3 +100,7 @@ Local evidence: `PYTHONPATH=src pytest -q` → 33 passed; Alembic fresh upgrade,
 - ADMIN may create companies, add/reactivate members, update member roles, and deactivate members. The last active ADMIN cannot be demoted or deactivated. A user may be a member of multiple workspaces with independent roles.
 - Workspace and company/member changes create AuditEvent records. All service methods re-resolve actor membership and permissions from the database; do not trust UI context or role values as authorization.
 - The first Streamlit shell provides setup/login/logout, forced temporary-password change, workspace/company selectors and ADMIN member/company management. It does not imply that financial dashboard/import screens already exist.
+
+
+## Phase 2 review corrections
+Workspace service inputs now normalize invalid values into explicit WorkspaceError responses for the Streamlit layer. Role updates coerce and validate the role enum before mutation. The CI lint profile checks correctness-focused Ruff rules (F, B, UP); import/line-length presentation rules are not configured as release gates in this phase.

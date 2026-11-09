@@ -3,13 +3,9 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import select
 
-from conftest import seed_workspace
 from sme_financial_dashboard.db.models import (
     AuditEvent,
-    Company,
     MembershipRole,
-    User,
-    WorkspaceMembership,
 )
 from sme_financial_dashboard.security.company_scope import (
     CompanyAccessDenied,

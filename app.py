@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import streamlit as st
-from sqlalchemy import select
-
 from sme_financial_dashboard.config import Settings
 from sme_financial_dashboard.db.models import BootstrapState, MembershipRole
 from sme_financial_dashboard.db.session import build_engine, build_session_factory

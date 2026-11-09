@@ -3,7 +3,6 @@ import pytest
 from sme_financial_dashboard.security.passwords import (
     PasswordError,
     hash_password,
-    needs_rehash,
     validate_password,
     verify_password,
 )

@@ -1,6 +1,6 @@
 from conftest import seed_workspace
 
-from sme_financial_dashboard.db.models import Company, MembershipRole
+from sme_financial_dashboard.db.models import MembershipRole
 from sme_financial_dashboard.security.company_scope import (
     CompanyAccessDenied,
     resolve_company_context,

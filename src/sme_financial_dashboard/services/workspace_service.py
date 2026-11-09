@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import secrets
 from dataclasses import dataclass
-from datetime import UTC, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from sqlalchemy import func, select
@@ -24,7 +23,6 @@ from sme_financial_dashboard.security.company_scope import (
 )
 from sme_financial_dashboard.security.passwords import hash_password
 from sme_financial_dashboard.security.rbac import (
-    AuthorizationError,
     Permission,
     require_permission,
 )
@@ -71,7 +69,11 @@ class WorkspaceService:
         actor = session.scalar(select(User).where(User.id == actor_user_id, User.is_active.is_(True)))
         if actor is None:
             raise WorkspaceError("An active user is required")
-        workspace = Workspace(name=_clean_name(name, field="Workspace name", maximum=120))
+        try:
+            cleaned_name = _clean_name(name, field="Workspace name", maximum=120)
+        except ValueError as exc:
+            raise WorkspaceError(str(exc)) from exc
+        workspace = Workspace(name=cleaned_name)
         session.add(workspace)
         session.flush()
         membership = WorkspaceMembership(
@@ -119,7 +121,10 @@ class WorkspaceService:
         is_demo: bool = True,
     ) -> Company:
         verified = _admin_context(session, context)
-        company_name = _clean_name(name, field="Company name", maximum=160)
+        try:
+            company_name = _clean_name(name, field="Company name", maximum=160)
+        except ValueError as exc:
+            raise WorkspaceError(str(exc)) from exc
         currency = base_currency.strip().upper()
         if len(currency) != 3 or not currency.isascii() or not currency.isalpha():
             raise WorkspaceError("Currency must be a three-letter ISO 4217 code")
@@ -187,9 +192,12 @@ class WorkspaceService:
         role: MembershipRole,
     ) -> MemberResult:
         verified = _admin_context(session, context)
-        normalized_email = normalize_email(email)
-        cleaned_name = _clean_name(display_name, field="Display name", maximum=120)
-        role = MembershipRole(role)
+        try:
+            normalized_email = normalize_email(email)
+            cleaned_name = _clean_name(display_name, field="Display name", maximum=120)
+            role = MembershipRole(role)
+        except ValueError as exc:
+            raise WorkspaceError(str(exc)) from exc
         user = session.scalar(select(User).where(User.email == normalized_email))
         temporary_password = None
         if user is None:
@@ -248,6 +256,10 @@ class WorkspaceService:
         new_role: MembershipRole,
     ) -> WorkspaceMembership:
         verified = _admin_context(session, context)
+        try:
+            new_role = MembershipRole(new_role)
+        except ValueError as exc:
+            raise WorkspaceError("Unsupported workspace role") from exc
         membership = session.scalar(
             select(WorkspaceMembership).where(
                 WorkspaceMembership.id == membership_id,

@@ -1,16 +1,11 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
-
 import pytest
 from sqlalchemy import select
-from sqlalchemy.exc import IntegrityError
 
 from sme_financial_dashboard.db.models import (
-    AuthSession,
     BootstrapState,
     MembershipRole,
-    User,
     WorkspaceMembership,
 )
 from sme_financial_dashboard.services.auth_service import (
@@ -108,7 +103,7 @@ def test_login_does_not_disclose_unknown_email_vs_bad_password(session):
 
 
 def test_tampered_session_token_is_rejected(session):
-    result = AuthService.bootstrap_first_admin(
+    AuthService.bootstrap_first_admin(
         session,
         email="admin@example.test",
         display_name="First Admin",
