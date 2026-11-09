@@ -89,3 +89,14 @@ Implemented and locally verified:
 - Integration and unit tests for Decimal behavior, permissions, workspace role propagation, active-company access, tenant-scoped reads, soft-delete defaults, same-company foreign keys and REVIEW-row invariants.
 
 Local evidence: `PYTHONPATH=src pytest -q` → 33 passed; Alembic fresh upgrade, `alembic check`, downgrade to base and re-upgrade → passed; SQLite `PRAGMA foreign_key_check` → no violations; `python -m compileall -q src tests alembic` → passed. Ruff was not executed in the session because the Ruff binary was not installed there; Ruff is pinned in the development requirements. No Streamlit UI or end-to-end import workflow is claimed complete.
+
+
+## Phase 2 authentication and workspace contract
+- Passwords use Argon2id through argon2-cffi. Enforce 12–128 characters; never store or log plaintext credentials.
+- The one-time first-run bootstrap is guarded by a singleton BootstrapState database row and creates the initial ADMIN, workspace and membership atomically. Bootstrap is permanently closed after initialization.
+- Authentication errors are generic. Inactive users cannot log in. New members receive a generated one-time temporary password and must change it at first login.
+- Sessions are HMAC-SHA256 signed, opaque, short-lived tokens held in Streamlit server-side session state and backed by AuthSession rows storing only the token hash, expiry and revocation metadata. Logout and password changes revoke sessions. SESSION_SECRET is configured outside source control and must be at least 32 characters.
+- WorkspaceMembership has an is_active flag for workspace-local deactivation without deleting history. Inactive memberships cannot resolve WorkspaceContext or CompanyContext.
+- ADMIN may create companies, add/reactivate members, update member roles, and deactivate members. The last active ADMIN cannot be demoted or deactivated. A user may be a member of multiple workspaces with independent roles.
+- Workspace and company/member changes create AuditEvent records. All service methods re-resolve actor membership and permissions from the database; do not trust UI context or role values as authorization.
+- The first Streamlit shell provides setup/login/logout, forced temporary-password change, workspace/company selectors and ADMIN member/company management. It does not imply that financial dashboard/import screens already exist.

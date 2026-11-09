@@ -145,6 +145,7 @@ class User(Base, TimestampMixin):
     password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
     display_name: Mapped[str] = mapped_column(String(120), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    must_change_password: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     memberships: Mapped[list[WorkspaceMembership]] = relationship(back_populates="user")
 
 
@@ -160,6 +161,7 @@ class WorkspaceMembership(Base):
     role: Mapped[MembershipRole] = mapped_column(
         enum_type(MembershipRole, "membership_role"), nullable=False
     )
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )
@@ -441,5 +443,40 @@ class AuditEvent(Base):
     after_json: Mapped[dict[str, Any] | None] = mapped_column(JSON)
     correlation_id: Mapped[UUID | None] = mapped_column(Uuid(as_uuid=True))
     created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
+
+
+
+class AuthSession(Base):
+    __tablename__ = "auth_sessions"
+    __table_args__ = (
+        UniqueConstraint("token_hash", name="uq_auth_session_token_hash"),
+        Index("ix_auth_sessions_user_expiry", "user_id", "expires_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(Uuid(as_uuid=True), primary_key=True, default=uuid4)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_seen_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class BootstrapState(Base):
+    __tablename__ = "bootstrap_state"
+    __table_args__ = (
+        CheckConstraint("id = 1", name="ck_bootstrap_state_singleton"),
+        UniqueConstraint("initial_admin_user_id", name="uq_bootstrap_initial_admin"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
+    initial_admin_user_id: Mapped[UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    initialized_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, default=lambda: datetime.now(UTC)
     )

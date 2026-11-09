@@ -30,6 +30,8 @@ py -3.11 -m venv .venv
 python -m pip install --upgrade pip
 pip install -r requirements-dev.txt
 Copy-Item .env.example .env
+# Generate a local signing secret and paste it into SESSION_SECRET in .env:
+python scripts/generate_session_secret.py
 python -m pip install -e .
 ```
 
@@ -55,7 +57,7 @@ ruff format --check .
 
 Phase 1 foundation includes project metadata, exact dependency pins, environment configuration, money-domain primitives, SQLAlchemy models, SQLite session factory, workspace RBAC/company scope, company-scoped repositories, an Alembic initial migration and foundation tests.
 
-The Streamlit UI, authentication lifecycle, import adapters, transaction services, dashboards and exports are implemented in later vertical phases. A passing foundation test suite does not mean the end-to-end MVP is complete.
+Phase 2 adds first-run ADMIN bootstrap, Argon2id password hashing, HMAC-signed session tokens backed by revocable database sessions, workspace/company creation, membership and role management, and an authenticated Streamlit shell. Import adapters, transaction services, dashboards and exports remain later vertical phases. A passing foundation or Phase 2 test suite does not mean the end-to-end MVP is complete.
 
 ## Security notes
 
@@ -63,3 +65,15 @@ The Streamlit UI, authentication lifecycle, import adapters, transaction service
 - `.env` and local database files are ignored by Git.
 - Uploaded content is untrusted. Parsers must be bounded, and PDF actions/macros are never executed.
 - SQLite has no row-level security. Every application query must enforce server-side company scope. Hosted/concurrent deployment requires PostgreSQL and a separate security review.
+
+
+## First run and authentication
+
+1. Apply migrations: `alembic upgrade head`.
+2. Generate a unique local secret: `python scripts/generate_session_secret.py`.
+3. Put the generated value in `.env` as `SESSION_SECRET=...`. Never commit `.env`.
+4. Start the app: `streamlit run app.py`.
+5. On an empty database, create the one-time first ADMIN and its workspace. The initial setup endpoint is then permanently closed by a singleton database record.
+6. Sign in. The ADMIN can create companies and manage members/roles from Workspace Management.
+
+Sessions are opaque HMAC-SHA256 signed tokens held in Streamlit server-side session state and backed by revocable database records. They expire after `SESSION_TTL_HOURS` (default 12 hours); logout revokes the current session. This is not an external SSO or persistent browser-cookie integration. In production, use a unique secret of at least 32 characters and protect the host/database.

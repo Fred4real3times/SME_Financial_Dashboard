@@ -17,7 +17,11 @@ class CompanyRepository:
             select(Company)
             .join(WorkspaceMembership, WorkspaceMembership.workspace_id == Company.workspace_id)
             .join(User, User.id == WorkspaceMembership.user_id)
-            .where(WorkspaceMembership.user_id == user_id, User.is_active.is_(True))
+            .where(
+                WorkspaceMembership.user_id == user_id,
+                WorkspaceMembership.is_active.is_(True),
+                User.is_active.is_(True),
+            )
             .order_by(Company.name, Company.id)
         )
         return list(session.scalars(statement).all())

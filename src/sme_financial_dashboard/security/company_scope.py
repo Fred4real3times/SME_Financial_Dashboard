@@ -32,6 +32,7 @@ def resolve_company_context(session: Session, *, user_id: UUID, company_id: UUID
             WorkspaceMembership.user_id == user_id,
             Company.id == company_id,
             User.is_active.is_(True),
+            WorkspaceMembership.is_active.is_(True),
         )
     )
     membership = session.execute(statement).one_or_none()
@@ -43,3 +44,30 @@ def resolve_company_context(session: Session, *, user_id: UUID, company_id: UUID
         company_id=company_id,
         role=membership.role,
     )
+
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceContext:
+    user_id: UUID
+    workspace_id: UUID
+    role: MembershipRole
+
+
+def resolve_workspace_context(
+    session: Session, *, user_id: UUID, workspace_id: UUID
+) -> WorkspaceContext:
+    statement = (
+        select(WorkspaceMembership.role)
+        .join(User, User.id == WorkspaceMembership.user_id)
+        .where(
+            WorkspaceMembership.user_id == user_id,
+            WorkspaceMembership.workspace_id == workspace_id,
+            WorkspaceMembership.is_active.is_(True),
+            User.is_active.is_(True),
+        )
+    )
+    role = session.scalar(statement)
+    if role is None:
+        raise CompanyAccessDenied("User is not an active member of the requested workspace")
+    return WorkspaceContext(user_id=user_id, workspace_id=workspace_id, role=role)

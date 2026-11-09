@@ -75,3 +75,18 @@ All PDF criteria remain BLOCKED until automated tests and workflow evidence are 
 | Ruff lint/format | NOT RUN | Ruff executable not installed in the development session |
 
 Product acceptance IDs AC-01..AC-06, IMP, FIN, CAT, EXP, AUD, SEC, OPS and PDF remain BLOCKED until their respective vertical workflows are built and tested. Foundation test success must not be represented as end-to-end MVP acceptance.
+
+
+## Authentication and workspace management — mandatory acceptance tests
+- AUTH-02 Bootstrap succeeds only once; first ADMIN, workspace, membership, BootstrapState and audit record are created atomically.
+- AUTH-03 Passwords are stored as Argon2id hashes; wrong password and unknown email return the same generic error.
+- AUTH-04 Session token signature, expiry, database record and revocation are validated; tampered, expired, revoked and inactive-user sessions are rejected.
+- AUTH-05 Logout and password change revoke existing sessions.
+- AUTH-06 Newly created member receives a one-time temporary password and must change it on first login.
+- WS-01 Active user may create a workspace and becomes its ADMIN; the same user may belong to multiple workspaces with independent roles.
+- WS-02 Only workspace ADMIN may create companies and manage memberships/roles.
+- WS-03 Company creation validates currency format/timezone and records an audit event.
+- WS-04 New user/member provision and role changes are audited; inactive membership loses access without physical deletion.
+- WS-05 The last active ADMIN cannot be demoted or deactivated.
+- WS-06 All workspace/company lists and company selection are membership-scoped and checked server-side.
+These criteria remain BLOCKED until CI/local test evidence for the Phase 2 branch is recorded.
