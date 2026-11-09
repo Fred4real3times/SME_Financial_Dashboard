@@ -1,9 +1,9 @@
 # Architecture — SME Financial Dashboard
-**Status: DRAFT / NOT APPROVED. Do not modify application code until owner validates this file and data_dictionary.md.**
+**Status: APPROVED FOR DEVELOPMENT — owner approval recorded 2026-11-09 after inclusion of the PDF import contract.**
 Version 0.1. Repository baseline: initial commit with README.md only.
 
 ## Goals and stack
-Local-first demonstrable modular monolith. Python 3.11+; Streamlit UI; Pandas ingestion; Python Decimal money; SQLAlchemy 2.x; SQLite local single-instance; PostgreSQL before concurrent/hosted multi-user use; Alembic migrations; Pydantic command/filter validation; Plotly charts; pytest; openpyxl XLSX; ReportLab proposed PDF; Ruff. Docker Compose optional. Pin exact dependency versions during implementation after environment check.
+Local-first demonstrable modular monolith. Python 3.11+; Streamlit UI; Pandas ingestion; Python Decimal money; SQLAlchemy 2.x; SQLite local single-instance; PostgreSQL before concurrent/hosted multi-user use; Alembic migrations; Pydantic command/filter validation; Plotly charts; pytest; openpyxl XLSX; pdfplumber for text/table extraction from digital PDFs; ReportLab for PDF report generation; Ruff. Docker Compose optional. Pin exact dependency versions during implementation after environment check.
 
 ## Boundaries
 Streamlit app → application services (Workspace, Authorization, Import, Transaction, Categorization, Dashboard, Export, Audit) → domain (money, cashflow, validation, rules, fingerprint) → repositories/SQLAlchemy/models/migrations → SQLite. Keep calculations testable without UI. No FastAPI/React in MVP unless separately approved.
@@ -15,7 +15,7 @@ app/; services/; domain/; data/models, repositories, migrations; tests/unit, int
 Workspace contains Companies; WorkspaceMembership links User and role. Every financial record carries company_id. Resolve CompanyContext from authenticated identity and membership; never trust a UI-supplied company_id. Every repository query and export includes company scope. Validate same-company foreign keys. Test cross-company reads, writes, dashboard, audit and exports. SQLite has no PostgreSQL RLS; hosted/concurrent deployment requires PostgreSQL and RLS/security assessment.
 
 ## Import pipeline
-Allow CSV/XLSX only; size/row limits; bounded preview; no writes before confirmation. Require date, amount, currency and direction or explicit signed convention. Parse explicit date/decimal settings; normalize currency uppercase; use Decimal; retain sanitized source row/mapping. Classify BLANK/INVALID/DUPLICATE/VALID/VALID_WITH_WARNING. Versioned SHA-256 fingerprint from normalized business fields, scoped by company. Atomic commit of ImportBatch, ImportRow, Transaction and AuditEvent. Repeated exact rows are idempotent. Identical legitimate rows lacking a distinguishing reference are inherently ambiguous and must be reviewed, not artificially distinguished.
+Allow CSV, XLSX and PDF only; validate allowlisted extension and actual file signature/content, size/page/row limits and parser output; show bounded preview; no writes before confirmation. Require date, amount, currency and direction or explicit signed convention. Parse explicit date/decimal settings; normalize currency uppercase; use Decimal; retain sanitized source row/mapping. Classify BLANK/INVALID/DUPLICATE/VALID/VALID_WITH_WARNING. Versioned SHA-256 fingerprint from normalized business fields, scoped by company. Atomic commit of ImportBatch, ImportRow, Transaction and AuditEvent. Repeated exact rows are idempotent. Identical legitimate rows lacking a distinguishing reference are inherently ambiguous and must be reviewed, not artificially distinguished.
 
 ## Financial contract
 amount > 0 Decimal; direction INFLOW/OUTFLOW. inflows=sum(INFLOW), outflows=sum(OUTFLOW), net=inflows-outflows. Partition by currency. Closing balance = coherent opening snapshot + net flow for same company/account/currency/period; absent snapshot => Unavailable. Label estimated/unverified balance. These are cash-management indicators, not accounting profit or certified bank balance. MonthlyMetric derived at query time.
@@ -46,8 +46,8 @@ Hash local passwords; no default production credential; secrets in environment o
 ## External integrations
 None required. CSV/XLSX ingress and local PDF generation only. Any future bank/Mobile Money adapter requires approved contract, authorization, legal basis, credentials and security review.
 
-## Approval checklist
-Approve A-01..A-10 in product_scope.md; workspace/company/membership and roles; amount/direction/currency; fingerprint and identical-row ambiguity; outlier algorithm; opening-balance semantics; SQLite/PostgreSQL gate; service contracts and audit scope. **Code implementation is blocked until approval.**
+## Contract approval and change control
+The owner explicitly approved architecture.md and data_dictionary.md for development on 2026-11-09, including this PDF import addendum. The approved MVP contract includes CSV/XLSX/PDF import with digital/text-based PDF extraction only, preview and manual mapping, no OCR, source-page provenance, REVIEW quarantine and explicitly confirmed partial commit. Implementation may proceed against these contracts. Any material change to file types, OCR, schema, permissions or financial semantics requires a written change proposal and owner approval.
 
 
 ## Decision addendum — 2026-11-09 (accepted)
@@ -63,3 +63,7 @@ Approve A-01..A-10 in product_scope.md; workspace/company/membership and roles; 
 4. **Identical rows without reference:** classify as REVIEW for manual resolution; do not silently deduplicate.
 5. **Categorization:** one primary category per transaction; split allocations are out of MVP scope.
 These decisions supersede earlier proposals where they differ.
+
+
+## PDF import decision record — approved 2026-11-09
+Supported input formats: CSV, XLSX and PDF. Implement a PDF adapter using pdfplumber for text/table extraction from digital PDFs. Retain page number, table index and extracted row position for each PDF-derived candidate. Require bounded preview, manual mapping and explicit confirmation; use the same Decimal, currency, duplicate, REVIEW, audit, company-isolation and partial-commit rules as other import formats. Scanned/image-only PDFs without a text layer, encrypted/password-protected PDFs, OCR, password cracking and embedded-file extraction are out of MVP. Never execute PDF JavaScript/actions or treat parsed content as instructions. Reject malformed or over-limit documents; when table structure is uncertain, return a clear error or stage rows as REVIEW rather than guessing. No persistent retention of the original uploaded PDF is required for the MVP; retain checksum, filename metadata, extraction metadata and row provenance.
