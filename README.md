@@ -91,3 +91,9 @@ Phase 3 branch head 64e50231bf228e251fb529b20655b89eba62b6cf passed GitHub Actio
 
 ### Phase 3 QA hardening
 CSV rows are streamed; XLSX ZIP entry, expanded-size, compression-ratio and column limits are checked; PDF encryption, table widths, page/table/row/character bounds are checked. SQLite duplicate lookups are chunked and transaction commits batch inserts before linking staged source rows. The parser has no hard wall-clock CPU timeout and is intended for the local single-instance app only, not a public upload endpoint.
+
+
+## Categories, rules and manual import review (Phase 4)
+Transactions support one primary category. Rules match description keywords, counterparty or reference; higher numeric priority wins, while equal top-priority matches remain unclassified for manual attention. A manual category assignment is audited and is not overwritten by rules. Confirmed imports apply applicable rules in the same transaction as the import.
+
+Ambiguous import rows stay in the REVIEW queue until an ADMIN or ACCOUNTANT records a decision. A corrected acceptance requires a reviewer note and a unique manual reference. The original source fingerprint is retained so re-importing the same reference-less row returns to REVIEW rather than silently inserting it again.

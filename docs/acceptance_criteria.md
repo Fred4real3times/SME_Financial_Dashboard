@@ -115,3 +115,18 @@ The import-engine automated acceptance tests are **PASS** on final QA branch hea
 - PDF-08: parser code only extracts PDF text/tables; no JavaScript/action execution or embedded-file extraction API is invoked — code-level review.
 
 **Still BLOCKED / not performed:** manual browser-based Streamlit smoke test (login → upload → preview → confirm → verify transaction list) and third-party penetration/security review. These do not invalidate the passing automated backend/parser tests, but full release acceptance remains open until completed.
+
+
+## Phase 4 categorization and review acceptance criteria — implementation in progress
+- CAT-07 Larger numeric priority wins; only a unique top-priority rule may assign a category.
+- CAT-08 Equal highest-priority matches return NEEDS_REVIEW and do not auto-assign.
+- CAT-09 A manual category assignment is audited and not overwritten by rule application.
+- CAT-10 Category kind must be BOTH or match the transaction's INFLOW/OUTFLOW direction.
+- CAT-11 Confirmed imports apply company-scoped rules within the same atomic batch commit.
+- REV-01 Review queue lists only pending REVIEW rows in the active company and is accessible only to ADMIN/ACCOUNTANT.
+- REV-02 CONFIRMED_DUPLICATE and REJECTED decisions update row status, reviewer, time, note and audit.
+- REV-03 CORRECTED_AND_ACCEPTED requires validated corrected values and a manual unique reference, creates a transaction and links the source row atomically.
+- REV-04 A corrected acceptance preserves the original ImportRow source fingerprint; re-importing the same reference-less source row returns it to REVIEW rather than silently creating another transaction.
+- REV-05 Review decisions and corrected transactions are audited; batch counters/status are recomputed.
+- REV-06 Repeated decisions on a non-REVIEW row are denied; duplicate fingerprint collision rolls back the decision.
+All Phase 4 criteria remain BLOCKED until latest branch-head CI and workflow evidence pass. Manual browser-based QA also remains required.
