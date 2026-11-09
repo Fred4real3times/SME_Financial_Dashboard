@@ -8,7 +8,7 @@ ADMIN manages workspace/company/members and all finance functions. ACCOUNTANT im
 Authenticate/local first-run admin setup → create workspace/company → set timezone and display currency → grant membership/role → select authorized company. Reject duplicate/invalid names and unauthorized company IDs. Audit administrative changes.
 
 ## Flow 2 — Import and map
-Select company → upload CSV/XLSX → enforce file type/size/content limits → preview bounded sample without DB writes → select worksheet if XLSX → map date, amount, currency and direction (or explicitly configure signed amount) → configure date and decimal separators → validate rows → classify blank/invalid/duplicate/valid/outlier-warning → review → confirm → atomically persist batch, rows, accepted transactions and audit event → show imported/ignored/rejected/warning counts.
+Select company → upload CSV/XLSX/PDF → enforce file type, signature, size and content limits → preview bounded sample without DB writes → select worksheet if XLSX; for PDF, extract text/tables page by page and show page provenance → map date, amount, currency and direction (or explicitly configure signed amount) → configure date and decimal separators → validate rows → classify BLANK/INVALID/DUPLICATE/VALID/VALID_WITH_WARNING/REVIEW → show separate counts → explicitly confirm partial import → atomically commit valid unambiguous rows while REVIEW rows remain staged → show imported/ignored/rejected/review/warning counts.
 
 Failures: unsupported/oversized/corrupt file, missing mappings, ambiguous parsing, all rows invalid or DB failure. Failed commit rolls back.
 
@@ -33,3 +33,6 @@ Ambiguous rows enter a review queue with reason codes and retained source row; n
 
 ## Final owner decisions — 2026-11-09
 Workspace membership carries one role uniformly across all companies in that workspace. ADMIN and ACCOUNTANT may soft-delete transactions with a reason; only ADMIN may restore. Partial import is allowed after explicit confirmation: valid rows commit while REVIEW rows remain staged and excluded from KPIs. Identical transactions without a distinguishing reference enter REVIEW. Each transaction has at most one primary category.
+
+## PDF-specific import flow
+For PDF, extract text/tables page by page, show page and table provenance, and allow manual field mapping after a bounded preview. Require explicit user confirmation before committing. Scanned/image-only pages, encrypted PDFs and unsupported or unstable layouts are reported with stable issue codes; they must not silently disappear from the batch summary or be converted into guessed transaction values. OCR is not part of the MVP.
