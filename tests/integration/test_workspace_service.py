@@ -41,6 +41,7 @@ def test_admin_can_create_company_with_audit(session):
     )
     session.commit()
     assert company.base_currency == "XAF"
+    assert company.is_demo is False
     assert session.scalar(
         select(AuditEvent).where(AuditEvent.entity_id == company.id)
     ).action == "COMPANY_CREATED"
@@ -123,6 +124,8 @@ def test_non_admin_cannot_manage_members(session):
     viewer_context = resolve_workspace_context(
         session, user_id=member.user.id, workspace_id=result.workspace.id
     )
+    with pytest.raises(PermissionError):
+        WorkspaceService.list_members(session, viewer_context)
     with pytest.raises(PermissionError):
         WorkspaceService.add_member(
             session, viewer_context, email="attacker@example.test",
