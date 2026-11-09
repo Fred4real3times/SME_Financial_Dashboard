@@ -61,11 +61,11 @@ def test_preview_stages_rows_without_creating_transactions_then_partially_commit
     _workspace, _user, company, context = _context(session)
     content = (
         b"Date;Amount;Currency;Direction;Reference;Counterparty\n"
-        "01/01/2026;1.250,50;XAF;CREDIT;R-1;Client A\n"
-        "02/01/2026;300,00;XAF;DEBIT;R-2;Vendor B\n"
-        "bad-date;50,00;XAF;CREDIT;R-3;Client C\n"
-        "03/01/2026;100,00;XAF;CREDIT;;Shop D\n"
-        "03/01/2026;100,00;XAF;CREDIT;;Shop D\n"
+        b"01/01/2026;1.250,50;XAF;CREDIT;R-1;Client A\n"
+        b"02/01/2026;300,00;XAF;DEBIT;R-2;Vendor B\n"
+        b"bad-date;50,00;XAF;CREDIT;R-3;Client C\n"
+        b"03/01/2026;100,00;XAF;CREDIT;;Shop D\n"
+        b"03/01/2026;100,00;XAF;CREDIT;;Shop D\n"
     )
 
     preview = ImportService.preview(
@@ -130,7 +130,7 @@ def test_preview_marks_referenced_reimport_as_duplicate(session):
     _workspace, _user, company, context = _context(session, suffix="duplicate")
     content = (
         b"Date;Amount;Currency;Direction;Reference;Counterparty\n"
-        "01/01/2026;100,00;XAF;CREDIT;REF-100;Client\n"
+        b"01/01/2026;100,00;XAF;CREDIT;REF-100;Client\n"
     )
     first = ImportService.preview(
         session, file_bytes=content, file_name="bank.csv", mapping=_mapping(), context=context
@@ -162,7 +162,7 @@ def test_existing_reference_less_match_is_review_not_silent_duplicate(session):
     _workspace, _user, _company, context = _context(session, suffix="review")
     content = (
         b"Date;Amount;Currency;Direction;Reference;Counterparty\n"
-        "01/01/2026;100,00;XAF;CREDIT;;Client\n"
+        b"01/01/2026;100,00;XAF;CREDIT;;Client\n"
     )
     first = ImportService.preview(
         session, file_bytes=content, file_name="bank.csv", mapping=_mapping(), context=context
@@ -186,7 +186,7 @@ def test_viewer_cannot_preview_or_commit(session):
     )
     content = (
         b"Date;Amount;Currency;Direction;Reference;Counterparty\n"
-        "01/01/2026;100,00;XAF;CREDIT;REF-1;Client\n"
+        b"01/01/2026;100,00;XAF;CREDIT;REF-1;Client\n"
     )
     with pytest.raises(PermissionError):
         ImportService.preview(
@@ -205,7 +205,7 @@ def test_user_cannot_forge_company_context_for_another_workspace(session):
     )
     content = (
         b"Date;Amount;Currency;Direction;Reference;Counterparty\n"
-        "01/01/2026;100,00;XAF;CREDIT;REF-1;Client\n"
+        b"01/01/2026;100,00;XAF;CREDIT;REF-1;Client\n"
     )
     with pytest.raises(CompanyAccessDenied):
         ImportService.preview(
