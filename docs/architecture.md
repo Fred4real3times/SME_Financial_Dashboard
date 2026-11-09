@@ -48,3 +48,9 @@ None required. CSV/XLSX ingress and local PDF generation only. Any future bank/M
 
 ## Approval checklist
 Approve A-01..A-10 in product_scope.md; workspace/company/membership and roles; amount/direction/currency; fingerprint and identical-row ambiguity; outlier algorithm; opening-balance semantics; SQLite/PostgreSQL gate; service contracts and audit scope. **Code implementation is blocked until approval.**
+
+
+## Decision addendum — 2026-11-09 (accepted)
+- Deletion policy: SOFT DELETE. Add lifecycle fields (e.g. is_active/deleted_at/deleted_by_user_id/deletion_reason) or an equivalent auditable status. Exclude deleted rows from standard dashboard/list/export queries; retain records, ImportRow links and AuditEvent. Restore behavior and permission to delete/restore remain open.
+- Ambiguous import policy: REVIEW. Ambiguous rows are staged with stable reason codes and cannot become transactions until manual resolution. Batch preview must report accepted, invalid, duplicate and review counts separately. Whether valid rows can be committed while review rows remain staged is still open; safest proposal is explicit partial commit after user confirmation.
+- Access model: WORKSPACE. A user can access multiple companies via WorkspaceMembership. Resolve authorization on every request/service call and enforce company_id on all finance queries. Whether membership role applies uniformly to all workspace companies or supports company-specific overrides remains open.
