@@ -27,3 +27,7 @@ No imported value can override tenant identity; unauthorized roles cannot mutate
 
 ## Limitations
 SQLite lacks PostgreSQL row-level security. This is a local single-instance demo relying on service authorization and tenant-scoped repositories. Hosted/concurrent deployment requires PostgreSQL, RLS/security review and deployment controls.
+
+
+## Decision addendum — 2026-11-09
+Soft deletion is not physical erasure: retain transaction, source provenance and audit; ordinary dashboards/exports exclude deleted rows. Only authorized service actions may mark/restore lifecycle state, and each transition is audited. Ambiguous rows remain quarantined in review and must not be treated as valid financial transactions until an authorized human resolves them. Workspace membership grants access to multiple companies, but never bypasses company-level authorization. Role scope and restore permissions remain pending.
