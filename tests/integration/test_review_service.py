@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from datetime import date
 from decimal import Decimal
-import hashlib
 
 import pytest
 from sqlalchemy import func, select
@@ -94,7 +93,7 @@ def _corrected_values(reference: str = "MANUAL-REVIEW-001") -> dict:
 
 
 def test_review_queue_is_company_scoped_and_viewer_cannot_access(session):
-    _workspace, _user, company, context = _context(session, suffix="queue-scope")
+    _workspace, _user, _company, context = _context(session, suffix="queue-scope")
     preview = _review_preview(session, context)
     queue = ReviewService.list_pending(session, context)
     assert len(queue) == 2
