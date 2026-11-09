@@ -20,7 +20,7 @@ def test_csv_is_parsed_in_a_bounded_worker():
     )
     assert document.file_type == "CSV"
     assert document.headers == ("Date", "Amount", "Currency", "Direction")
-    assert document.rows[0].values == ("2026-01-01", "125.50", "XAF")
+    assert document.rows[0].values == ("2026-01-01", "125.50", "XAF", "INFLOW")
 
 
 def test_xlsx_worksheet_discovery_uses_a_bounded_worker():
