@@ -19,7 +19,7 @@ Category CRUD, deterministic rules/conflict handling, manual correction and befo
 ## Phase 5 — Dashboard [COMPLETE — automated CI; manual browser smoke test outstanding]
 Canonical filters; inflow/outflow/net; conditional balances; monthly charts, top spend/counterparties and period comparison; independent Decimal reconciliation. Exit AC-04.
 
-## Phase 6 — Exports and history [IN PROGRESS]
+## Phase 6 — Exports and history [AUTOMATED PASS — manual browser QA outstanding]
 CSV/PDF from the same company-scoped DashboardFilters; CSV formula-injection defense; import-batch/row history; company audit history; export history/audit events; bounded export size and pagination. Exit AC-05 after backend and UI tests.
 
 ## Phase 7 — Synthetic data and QA
@@ -158,3 +158,28 @@ Automated evidence: commit \`62eb759f2c5c480a7b7385d6939d1d7377bc398e\`, PR #6 C
 
 ## Phase 6 remaining validation
 Automated tests must cover CSV formula injection, exact filters, tenant isolation, viewer export permission, row limits, valid PDF generation/content, batch/row provenance, audit pagination and authorization. Manual browser validation remains outstanding.
+
+
+## Phase 6 delivery report — automated PASS, 2026-11-09
+**Code and automated acceptance:** PASS on PR #9 head \`f88035b1f6250092fc0af710a95af55fb93b6341\`, GitHub Actions run \`42645249072\`.
+
+Implemented:
+- Filter-identical, company-scoped CSV/PDF export through \`DashboardFilters\`, with verified \`CompanyContext\` and \`Permission.EXPORT\`.
+- Validated/non-deleted rows only; currencies remain distinct; Decimal values exported in fixed-point form.
+- SQL-side 10,001-row probe for a 10,000-row export ceiling.
+- CSV formula neutralization after whitespace/control prefixes across all user-provided text columns.
+- PDF with escaped dynamic text, wrapped detail cells, company/filter metadata, per-currency totals and filtered transactions.
+- Export-preparation audit events with format/filter/count metadata only.
+- Company-scoped import batch/row history and service-level pagination.
+- Company-scoped audit history with role enforcement; the UI presents event metadata only.
+- Streamlit export controls and import/audit history sections.
+
+Automated evidence on Python 3.11, 3.12 and 3.13:
+- Ruff: PASS.
+- pytest: 136 passed on each version.
+- Alembic upgrade/check/downgrade/re-upgrade: PASS.
+- SQLite foreign_key_check: clean.
+
+The headless Streamlit test verifies that the authenticated app renders the dashboard, export controls, import history and audit history labels, and the expected financial metrics.
+
+**Still open:** manual browser testing of download interaction, PDF layout/page breaks, history pagination and filters; independent security review. The headless test checks presence/rendering but does not replace visual browser QA. Phase 6 backend and CI acceptance is automated PASS; full release acceptance remains open.

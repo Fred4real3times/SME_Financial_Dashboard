@@ -113,3 +113,7 @@ The Phase 5 dashboard branch head \`62eb759f2c5c480a7b7385d6939d1d7377bc398e\` p
 
 ### Phase 6 — Exports and history (implementation in progress)
 The Phase 6 branch adds filtered CSV/PDF export, spreadsheet-formula neutralization, company-scoped import batch/row history and restricted audit history. Exports reuse the exact dashboard filters and include only validated, non-deleted transactions. Automated verification and release status will be recorded after the branch-head CI completes.
+
+
+### Phase 6 verification — automated PASS, 2026-11-09
+PR #8 integrated the Phase 6 exports/history implementation. A CI follow-up is tracked in PR #9 because the first merged state contained a Ruff finding and stale UI/test assertions. Follow-up head \`f88035b1f6250092fc0af710a95af55fb93b6341\`, GitHub Actions run [42645249072](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42645249072), passed on Python 3.11, 3.12 and 3.13: Ruff, 136 tests per version, Alembic round-trip and SQLite foreign_key_check. PR #9 remains a draft. Manual browser QA and independent security review remain outstanding.

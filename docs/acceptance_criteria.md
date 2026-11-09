@@ -147,16 +147,17 @@ The import-engine automated acceptance tests are **PASS** on final QA branch hea
 - **Still BLOCKED:** manual browser smoke test and independent security review. Concurrent duplicate opening-snapshot submissions are only guarded by the service lookup in this iteration; database-level uniqueness is a follow-up hardening item.
 
 
-## Phase 6 export and history acceptance criteria — implementation in progress
-- EXP-01 CSV export applies the same inclusive dates, currency, account, category and direction filters as the dashboard.
-- EXP-02 CSV export is company-scoped and excludes unvalidated and soft-deleted transactions.
-- EXP-03 CSV output neutralizes spreadsheet formula prefixes even after leading whitespace/control characters, for all user-controlled text columns.
-- EXP-04 PDF export is a valid PDF, includes company/filter metadata, per-currency cash-flow totals and only filtered transaction rows.
-- EXP-05 CSV/PDF exports enforce a bounded maximum row count using a SQL-side row limit.
-- EXP-06 Preparing an export writes a company-scoped audit event with filters, format and row count without duplicating transaction details.
-- HIS-01 Import batch history lists only batches in the active company and exposes file type, extraction method, status and row counters.
-- HIS-02 Import row history preserves source row/page/table provenance, status, issues and review outcome; rows of another company's batch cannot be queried.
-- AUD-01 Audit history is company-scoped, ordered and paginated.
-- AUD-02 Only ADMIN/ACCOUNTANT can inspect audit history; VIEWER can still export and inspect permitted import history.
-- AUD-03 Audit UI shows event metadata without dumping sensitive before/after JSON payloads.
-- Current implementation branch and CI evidence will be recorded after tests pass. Manual browser review remains separate.
+## Phase 6 export and history acceptance criteria — automated PASS
+- EXP-01 CSV export applies the same inclusive dates, currency, account, category and direction filters as the dashboard — PASS, \`test_csv_export_uses_exact_filters_company_scope_and_formula_neutralization\`.
+- EXP-02 CSV export is company-scoped and excludes unvalidated and soft-deleted transactions — PASS, \`test_csv_export_uses_exact_filters_company_scope_and_formula_neutralization\`.
+- EXP-03 CSV output neutralizes spreadsheet formula prefixes after leading whitespace/control characters in user-controlled text — PASS, \`test_csv_formula_guard_neutralizes_all_supported_prefix_shapes\` and CSV export integration test.
+- EXP-04 PDF export is valid, includes company/filter metadata and per-currency totals, and excludes rows outside the selected filter/company — PASS, \`test_pdf_export_is_valid_and_contains_only_filtered_company_rows\`.
+- EXP-05 CSV/PDF exports enforce a bounded maximum row count using a SQL-side limit — PASS, \`test_export_row_limit_is_enforced_before_audit\`; export queries request no more than 10,001 rows.
+- EXP-06 Preparing an export writes a company-scoped audit event with format, filters and row count without duplicating transaction details — PASS, CSV/PDF export audit assertions.
+- HIS-01 Import batch history lists only batches in the active company with file type, extraction method, status and row counters — PASS, \`test_import_history_is_company_scoped_and_preserves_row_provenance\`.
+- HIS-02 Import row history preserves source row/page/table provenance, status, issues and review outcome; cross-company batches are denied — PASS, import history and pagination integration tests.
+- AUD-01 Audit history is company-scoped, ordered and paginated at the service layer — PASS, \`test_audit_history_is_company_scoped_permission_checked_and_paginated\`.
+- AUD-02 Only ADMIN/ACCOUNTANT can inspect audit history; VIEWER can export and inspect permitted import history — PASS, \`test_viewer_can_export_but_cannot_read_audit_history\` and viewer history access test.
+- AUD-03 Audit UI displays event metadata without exposing before/after JSON payloads — PASS, Streamlit AppTest smoke test and app inspection.
+- CI evidence: PR #9 head \`f88035b1f6250092fc0af710a95af55fb93b6341\`, run \`42645249072\`; Python 3.11/3.12/3.13 each passed Ruff, 136 tests, Alembic round-trip and SQLite foreign_key_check.
+- **Still BLOCKED for full release:** manual browser test of CSV/PDF downloads, rendered PDF layout/page breaks, filter changes and import/audit history pagination; independent external security review. Automated service and headless UI acceptance is PASS, but full visual/browser acceptance is not closed.
