@@ -47,3 +47,14 @@ Add mandatory acceptance criteria:
 - IMP-09 explicit partial-commit confirmation commits valid rows atomically while REVIEW rows remain staged and excluded from KPIs. IMP-10 identical rows without distinguishing reference are REVIEW, not silently deduplicated. IMP-11 unresolved REVIEW rows have no committed Transaction record/link.
 - CAT-06 exactly one primary category per transaction; split allocation is unsupported.
 All criteria remain BLOCKED until implementation and evidence exist.
+
+## PDF import — mandatory acceptance tests
+- PDF-01 Valid synthetic digital/text-based PDF statement accepted; file type and page count recorded.
+- PDF-02 Extracted candidates shown in bounded preview; explicit field mapping and confirmation required before commit.
+- PDF-03 Every imported PDF row retains source page/table/row provenance.
+- PDF-04 Scanned/image-only PDF detected and clearly reported unsupported in MVP; no false successful empty import or invented rows.
+- PDF-05 Encrypted, malformed, wrong-signature, oversized and over-page-limit PDFs rejected safely with stable issue codes.
+- PDF-06 Unclear table structure, split/merged values or ambiguous date/amount/direction staged as REVIEW or rejected with explicit reason; never guessed.
+- PDF-07 PDF import obeys the same tenant isolation, role authorization, duplicate detection, Decimal validation, partial commit, audit and provenance rules as CSV/XLSX.
+- PDF-08 PDF actions/scripts and embedded attachments are never executed or extracted.
+All PDF criteria remain BLOCKED until automated tests and workflow evidence are produced.
