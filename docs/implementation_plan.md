@@ -195,3 +195,8 @@ Post-rebase CI is required on the new exact branch head before Phase 7 can be co
 - Added regression coverage for duplicate verified snapshot insertion, bounded parsing, timeout termination and parser error propagation.
 - Exact-head CI must pass on Python 3.11, 3.12 and 3.13, including Ruff, tests, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign-key checks.
 - Manual Windows/WSL install, interactive synthetic CLI, browser workflow/visual QA, restore operation and independent security review remain external release gates.
+
+### Cross-platform CI hardening — implementation added; verification pending
+- Linux matrix: Python 3.11, 3.12 and 3.13.
+- Windows runner: Windows Server with Python 3.11, running Ruff, the full unit/integration suite and migration upgrade/check/downgrade/re-upgrade with SQLite foreign-key validation.
+- Windows CI exercises the subprocess parser worker and SQLite backup/restore code on the target operating system. It does not replace manual Windows/WSL installation and browser acceptance.
