@@ -97,3 +97,11 @@ CSV rows are streamed; XLSX ZIP entry, expanded-size, compression-ratio and colu
 Transactions support one primary category. Rules match description keywords, counterparty or reference; higher numeric priority wins, while equal top-priority matches remain unclassified for manual attention. A manual category assignment is audited and is not overwritten by rules. Confirmed imports apply applicable rules in the same transaction as the import.
 
 Ambiguous import rows stay in the REVIEW queue until an ADMIN or ACCOUNTANT records a decision. A corrected acceptance requires a reviewer note and a unique manual reference. The original source fingerprint is retained so re-importing the same reference-less row returns to REVIEW rather than silently inserting it again.
+
+
+### Current integration and verification snapshot — 2026-11-09
+- Phase 3 import engine, Phase 4 categorization/manual REVIEW, and the Ruff correction are integrated into \`main\`.
+- Current main commit at this snapshot: \`41cf26cb5231ceb3e540f402fb9b944048a2315e\`.
+- Post-merge GitHub Actions run [42634994455](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42634994455) passed on Python 3.11, 3.12 and 3.13; each matrix job passed Ruff, 110 tests, Alembic round-trip and SQLite foreign_key_check.
+- Manual browser-based Streamlit smoke testing and independent external security review remain outstanding.
+- Phase 5 dashboard work is in progress. The dashboard excludes soft-deleted and unvalidated transactions, keeps Decimal calculations per currency, and only displays closing balance when a unique verified account/currency opening snapshot supports it.

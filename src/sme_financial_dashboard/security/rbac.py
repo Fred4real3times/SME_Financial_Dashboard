@@ -19,6 +19,7 @@ class Permission(StrEnum):
     RESTORE_TRANSACTION = "restore_transaction"
     MANAGE_MEMBERS = "manage_members"
     MANAGE_WORKSPACE = "manage_workspace"
+    MANAGE_SNAPSHOTS = "manage_snapshots"
 
 
 ROLE_PERMISSIONS: dict[MembershipRole, frozenset[Permission]] = {
@@ -33,6 +34,7 @@ ROLE_PERMISSIONS: dict[MembershipRole, frozenset[Permission]] = {
             Permission.CORRECT_TRANSACTIONS,
             Permission.VIEW_AUDIT,
             Permission.DELETE_TRANSACTION,
+            Permission.MANAGE_SNAPSHOTS,
         }
     ),
     MembershipRole.VIEWER: frozenset({Permission.VIEW, Permission.EXPORT}),

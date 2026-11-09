@@ -7,16 +7,16 @@ Preserve existing files; initial repo contains README.md only. Review product sc
 ## Phase 1 — Domain and foundation [COMPLETE]
 Created Python metadata, pinned dependencies, config and .env.example. Implemented Decimal money, direction, cashflow and per-currency partitioning. Added SQLAlchemy models, Alembic, repositories, verified company context and RBAC. Exit achieved: 33 unit/integration tests pass and a clean migration upgrades, downgrades and re-upgrades successfully. Evidence is recorded below.
 
-## Phase 2 — Workspace, user and company [IN PROGRESS]
+## Phase 2 — Workspace, user and company [COMPLETE — automated CI; manual UI smoke test outstanding]
 Local authentication with Argon2id passwords, one-time first-run ADMIN bootstrap, signed revocable sessions, temporary-password change, workspace/company/membership/roles management and authorized selectors. Test generic login errors, expiry/revocation, last-admin protection, membership deactivation, audit events and tenant boundaries.
 
-## Phase 3 — Import vertical
+## Phase 3 — Import vertical [COMPLETE — automated QA; manual UI smoke test outstanding]
 CSV/XLSX/PDF template and mapping UI; PDF text/table extraction adapter with page provenance and scanned-PDF detection; preview; explicit parse settings; validation/classification including REVIEW; explicitly confirmed partial import; atomic batch/rows/transactions/audit commit; repeat import and rollback tests. Exit AC-01/02 and PDF-01..08.
 
-## Phase 4 — Categorization and audit
+## Phase 4 — Categorization and audit [COMPLETE — automated CI; manual UI smoke test outstanding]
 Category CRUD, deterministic rules/conflict handling, manual correction and before/after audit; KPI refresh test. Exit AC-03.
 
-## Phase 5 — Dashboard
+## Phase 5 — Dashboard [IN PROGRESS]
 Canonical filters; inflow/outflow/net; conditional balances; monthly charts, top spend/counterparties and period comparison; independent Decimal reconciliation. Exit AC-04.
 
 ## Phase 6 — Exports and history
@@ -106,3 +106,22 @@ Backend services and Streamlit screens are being added on feat/phase-4-categoriz
 - Confirmed imports apply rules once per batch. Corrected REVIEW acceptance uses the same rule engine.
 - Review queue decisions: CONFIRMED_DUPLICATE, REJECTED, CORRECTED_AND_ACCEPTED; corrected acceptance requires a unique manual reference and preserves the original source fingerprint for future re-import detection.
 Exit requires CAT-07..CAT-11 and REV-01..REV-06 automated evidence plus manual Streamlit smoke testing. No Phase 4 code is merged to main.
+
+
+## Phase 4 final automated verification — 2026-11-09
+Phase 4 (categorization and manual import review) is integrated into \`main\`. After PR #5 corrected the Ruff UP012 finding, main commit \`41cf26cb5231ceb3e540f402fb9b944048a2315e\` passed GitHub Actions run \`42634994455\`: Python 3.11, 3.12 and 3.13 each passed Ruff, 110 unit/integration tests, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign_key_check. PRs #4 and #3 integrated the Phase 4 and Phase 3 branches; PR #5 delivered the follow-up lint correction.
+
+**Still open:** browser-based Streamlit smoke testing for login → import preview/commit → category/rule management → manual REVIEW resolution, and independent security review. Automated CI is not a substitute for these release checks.
+
+## Phase 5 — Dashboard implementation decisions — 2026-11-09
+- The dashboard reads only active, committed/validated transactions (\`deleted_at IS NULL\` and \`is_validated = true\`). REVIEW rows remain staging records and are excluded.
+- Every amount remains a Python Decimal. KPIs, monthly values, rankings and comparisons are partitioned by currency; no exchange-rate conversion or cross-currency addition is performed.
+- Canonical filters are inclusive start/end dates plus optional currency, account, category and direction.
+- The comparison period is the immediately preceding contiguous interval with the same number of calendar days and the same non-date filters.
+- The closing balance is an estimated cash-management indicator only. It is displayed only for one account and one currency, without category or direction filtering, and only when one unique verified opening snapshot exists at or before the selected end date.
+- \`AccountSnapshot.as_of_date\` is interpreted as the start of that day, before transactions dated that day. Closing balance is opening balance plus all validated, non-deleted movements for the same company/account/currency from that date through the selected end date, inclusive.
+- A provisional (\`is_verified = false\`) snapshot is retained and audited but never used in a closing-balance calculation. If multiple verified snapshots share the latest eligible date, the closing balance is withheld as conflicting. A later unique verified snapshot can supersede an older snapshot.
+- ADMIN and ACCOUNTANT can create opening snapshots with an evidence description and an explicit verification attestation. Snapshot creation is company-scoped and audited. VIEWER can read reports but cannot create snapshots.
+- Monthly charts convert Decimal values to float only at the plotting boundary; all authoritative KPI, ranking and comparison calculations remain Decimal.
+
+Phase 5 exit requires automated tests for filter scope, Decimal and currency reconciliation, monthly buckets, rankings, equal-length comparison windows, snapshot selection/conflicts and role/audit controls. Browser smoke testing remains a separate release check.

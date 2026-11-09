@@ -13,6 +13,8 @@ from sme_financial_dashboard.security.rbac import (
     "role,permission,allowed",
     [
         (MembershipRole.ADMIN, Permission.RESTORE_TRANSACTION, True),
+        (MembershipRole.ACCOUNTANT, Permission.MANAGE_SNAPSHOTS, True),
+        (MembershipRole.VIEWER, Permission.MANAGE_SNAPSHOTS, False),
         (MembershipRole.ACCOUNTANT, Permission.DELETE_TRANSACTION, True),
         (MembershipRole.ACCOUNTANT, Permission.RESTORE_TRANSACTION, False),
         (MembershipRole.VIEWER, Permission.EXPORT, True),
