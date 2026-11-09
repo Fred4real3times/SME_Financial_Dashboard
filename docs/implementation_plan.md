@@ -158,3 +158,7 @@ Automated evidence: commit \`62eb759f2c5c480a7b7385d6939d1d7377bc398e\`, PR #6 C
 
 ## Phase 6 remaining validation
 Automated tests must cover CSV formula injection, exact filters, tenant isolation, viewer export permission, row limits, valid PDF generation/content, batch/row provenance, audit pagination and authorization. Manual browser validation remains outstanding.
+
+
+## Phase 6 CI follow-up — 2026-11-09
+The merged Phase 6 commit was followed by a matrix run that exposed a UI smoke assertion mismatch: the automated test expected an explicit "Audit trail" subheader while the interface rendered the label as bold Markdown "Audit history". The 135 other tests passed on all tested Python versions; this follow-up makes the audit heading explicit and retains the smoke-test expectation. It also removes Ruff UP012 in the export state-key hashing expression. Revalidation is required on the exact follow-up PR head.
