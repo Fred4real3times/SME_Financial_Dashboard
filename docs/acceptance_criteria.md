@@ -101,7 +101,7 @@ The first CI run identified Ruff findings (unused imports, an unused test variab
 
 
 ## Phase 3 import engine — automated QA result
-The import-engine automated acceptance tests are **PASS** on branch head `8a855c2288306b4d256b89cb0f7cb177cdaa4c1c` (GitHub Actions run `42623281625`): Python 3.11, 3.12 and 3.13 each passed Ruff, the full test suite (88 tests), Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign_key_check. The follow-up boundary-test commit adds four additional tests and is being verified separately; do not count it as accepted until its own branch-head run is green.
+The import-engine automated acceptance tests are **PASS** on final QA branch head `5471e5851c347237a7b1cebea15427d67770d24a` (GitHub Actions run `42623635331`): Python 3.11, 3.12 and 3.13 each passed Ruff, the full test suite (92 tests), Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign_key_check. Each matrix job also passed on the preceding code head `f94b6b1c9473b64a71ec13dbae3e194cc36b7c6e` (run `42623496040`).
 
 - IMP-12: allowlist/signature, malformed/oversized input, streamed row limit, column limit, XLSX ZIP entry/expansion/compression controls and PDF page/row limits — automated tests.
 - IMP-13: explicit CSV encoding/delimiter, XLSX worksheet, date format and decimal/thousands separators — automated tests and service validation.

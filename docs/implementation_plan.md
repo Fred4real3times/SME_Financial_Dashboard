@@ -92,3 +92,7 @@ QA found and corrected: unbounded CSV row materialization before row-limit enfor
 Added automated coverage for streaming row/column boundaries, XLSX entry/expanded-size/compression-ratio boundaries, PDF encryption/pages/tables/rows/per-page and total text bounds, uneven PDF rows, 1,200-row fingerprint lookup, same-preview commit idempotency, and full rollback on a simulated concurrent fingerprint collision.
 
 The branch-head CI run for the 88-test baseline is 42623281625 on commit 8a855c2288306b4d256b89cb0f7cb177cdaa4c1c (all three Python versions green). Additional boundary tests and batched-commit performance changes must be verified on their own latest branch-head commit before creating the final Phase 3 integration PR. Manual Streamlit browser testing and external security review remain open.
+
+
+## Final Phase 3 QA verification — 2026-11-09
+Final QA branch head `5471e5851c347237a7b1cebea15427d67770d24a` passed GitHub Actions run `42623635331` on Python 3.11, 3.12 and 3.13. Each version passed Ruff, 92 tests, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign_key_check. Phase 3 backend/parser automation is validated. Manual Streamlit browser smoke testing and an external security review remain outstanding; release acceptance is not fully closed.

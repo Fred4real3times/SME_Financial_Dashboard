@@ -32,7 +32,7 @@
 
 ## CI evidence
 
-Baseline head `8a855c2288306b4d256b89cb0f7cb177cdaa4c1c`, run `42623281625`: all matrix jobs Python 3.11, 3.12 and 3.13 passed Ruff, 88 tests, Alembic migration round-trip and SQLite foreign-key integrity. A subsequent commit adds four more negative-boundary tests; final verification must use that exact later commit.
+Final QA head `5471e5851c347237a7b1cebea15427d67770d24a`, run `42623635331`: all matrix jobs Python 3.11, 3.12 and 3.13 passed Ruff, 92 tests, Alembic migration round-trip and SQLite foreign-key integrity. The preceding code head `f94b6b1c9473b64a71ec13dbae3e194cc36b7c6e`, run `42623496040`, also passed 92 tests on all three Python versions.
 
 ## Residual / not performed
 
