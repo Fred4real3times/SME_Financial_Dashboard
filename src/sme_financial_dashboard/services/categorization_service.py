@@ -141,6 +141,22 @@ def _verified_context(
     return verified
 
 
+
+def _resolve_active_category(
+    session: Session, context: CompanyContext, category_id: UUID
+) -> Category:
+    category = session.scalar(
+        select(Category).where(
+            Category.id == category_id,
+            Category.company_id == context.company_id,
+            Category.is_active.is_(True),
+        )
+    )
+    if category is None:
+        raise CategoryNotFound("Active category was not found in the active company.")
+    return category
+
+
 class CategoryService:
     """CRUD-like category management; categories are deactivated, never physically deleted."""
 
@@ -324,16 +340,7 @@ class CategorizationRuleService:
     def _resolve_category(
         session: Session, context: CompanyContext, category_id: UUID
     ) -> Category:
-        category = session.scalar(
-            select(Category).where(
-                Category.id == category_id,
-                Category.company_id == context.company_id,
-                Category.is_active.is_(True),
-            )
-        )
-        if category is None:
-            raise CategoryNotFound("Active category was not found in the active company.")
-        return category
+        return _resolve_active_category(session, context, category_id)
 
     @staticmethod
     def create_rule(
@@ -645,9 +652,7 @@ class CategorizationService:
             raise TransactionNotFound("Active transaction was not found in the active company.")
         category = None
         if category_id is not None:
-            category = CategoryService._resolve_category_for_assignment(
-                session, verified, category_id
-            )
+            category = _resolve_active_category(session, verified, category_id)
             if (
                 category.kind is not CategoryKind.BOTH
                 and category.kind.value != transaction.direction.value
@@ -685,12 +690,3 @@ class CategorizationService:
             )
         return transaction
 
-
-# Reuse the same tenant-aware category lookup from manual assignment.
-def _resolve_category_for_assignment(
-    session: Session, context: CompanyContext, category_id: UUID
-) -> Category:
-    return CategorizationRuleService._resolve_category(session, context, category_id)
-
-
-CategoryService._resolve_category_for_assignment = staticmethod(_resolve_category_for_assignment)
