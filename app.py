@@ -1479,7 +1479,7 @@ if companies and dashboard_filters is not None:
             f"{dashboard_filters.end_date.isoformat()}|{dashboard_filters.currency}|"
             f"{dashboard_filters.account_name}|{dashboard_filters.category_id}|"
             f"{dashboard_filters.direction}"
-        ).encode("utf-8")
+        ).encode()
     ).hexdigest()[:12]
     csv_state_key = f"csv_export_{chosen}_{export_signature}"
     pdf_state_key = f"pdf_export_{chosen}_{export_signature}"
@@ -1532,7 +1532,7 @@ if companies and dashboard_filters is not None:
                 key=f"download_pdf_{export_signature}",
             )
 
-    st.markdown("**Import history**")
+    st.subheader("Import history")
     try:
         with session_factory() as db:
             company_context = resolve_company_context(
@@ -1639,7 +1639,7 @@ if companies and dashboard_filters is not None:
         st.error(f"Import history could not be loaded: {exc}")
 
     if workspace_context.role in {MembershipRole.ADMIN, MembershipRole.ACCOUNTANT}:
-        st.markdown("**Audit history**")
+        st.subheader("Audit trail")
         try:
             with session_factory() as db:
                 company_context = resolve_company_context(
