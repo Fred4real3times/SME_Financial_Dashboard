@@ -209,6 +209,8 @@ def _load_rows(
     session: Session,
     company_id: UUID,
     filters: DashboardFilters,
+    *,
+    limit: int | None = None,
 ) -> list[tuple[Transaction, str | None]]:
     statement = (
         select(Transaction, Category.name)
@@ -236,6 +238,8 @@ def _load_rows(
     if filters.direction is not None:
         statement = statement.where(Transaction.direction == filters.direction)
     statement = statement.order_by(Transaction.transaction_date, Transaction.id)
+    if limit is not None:
+        statement = statement.limit(limit)
     return [(transaction, category_name) for transaction, category_name in session.execute(statement)]
 
 
@@ -465,6 +469,23 @@ class DashboardService:
             account_names=account_names,
             categories=categories,
         )
+
+    @staticmethod
+    def transactions(
+        session: Session,
+        context: CompanyContext,
+        filters: DashboardFilters,
+        *,
+        limit: int | None = None,
+    ) -> list[tuple[Transaction, str | None]]:
+        """Return exactly the validated transaction rows covered by report filters."""
+        if limit is not None and (
+            isinstance(limit, bool) or not isinstance(limit, int) or limit < 1
+        ):
+            raise DashboardError("Transaction list limit must be a positive integer.")
+        verified = _verified_context(session, context)
+        validated = _validated_filters(session, verified, filters)
+        return _load_rows(session, verified.company_id, validated, limit=limit)
 
     @staticmethod
     def report(

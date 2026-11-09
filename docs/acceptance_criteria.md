@@ -19,7 +19,12 @@ FIN-01 Positive Decimal + direction. FIN-02 Correct inflow/outflow/net formulas.
 
 ## Categorization, exports and audit
 CAT-01 keyword/counterparty/reference rules. CAT-02 deterministic priority. CAT-03 conflicting top priority flagged. CAT-04 correction records actor/time/before/after. CAT-05 cross-company category/rule rejected.
-EXP-01 CSV exactly filtered rows. EXP-02 PDF same company/currency/period/totals/filters. EXP-03 formula cells escaped. AUD-01 imports/corrections/rules/roles audited. AUD-02 source provenance retained. AUD-03 restricted audit views denied.
+EXP-01 CSV contains exactly the validated, non-deleted rows matching the selected company/date/currency/account/category/direction filters — implementation and automated test added; CI pending.
+EXP-02 PDF contains the same company, filters, per-currency totals and filtered transaction rows — implementation and automated test added; CI pending.
+EXP-03 CSV formula-like text is escaped before opening in spreadsheet software — implementation and automated test added; CI pending.
+AUD-01 imports, corrections, rules, role changes and export preparation are audited — export preparation events added; full action matrix continues to be tested.
+AUD-02 import source provenance remains available through company-scoped ImportBatch/ImportRow history — history view/service added; automated tests pending CI.
+AUD-03 audit history is restricted to roles with VIEW_AUDIT and cannot cross companies — implementation and automated tests added; CI pending.
 
 ## Security and operations
 SEC-01 invalid/inactive authentication rejected. SEC-02 role matrix enforced in services. SEC-03 cross-tenant list/detail/correction/dashboard/audit/export denied. SEC-04 malformed/oversized files rejected safely. SEC-05 injection-like inputs harmless. SEC-06 no secrets or real bank data in repo/sample.
@@ -145,3 +150,14 @@ The import-engine automated acceptance tests are **PASS** on final QA branch hea
 - DASH-10 Independent Decimal expected-value checks validate current totals and closing balance — PASS, dashboard reporting integration tests.
 - CI evidence: branch head \`62eb759f2c5c480a7b7385d6939d1d7377bc398e\`, run \`42637974318\`; Python 3.11, 3.12 and 3.13 each passed Ruff, 120 tests, Alembic round-trip and SQLite foreign_key_check.
 - **Still BLOCKED:** manual browser smoke test and independent security review. Concurrent duplicate opening-snapshot submissions are only guarded by the service lookup in this iteration; database-level uniqueness is a follow-up hardening item.
+
+
+## Phase 6 export and history acceptance — implementation in progress
+- EXPORT-01 Prepared CSV and PDF artifacts use DashboardFilters without broadening or changing the selected company or transaction scope.
+- EXPORT-02 CSV formula neutralization covers cells beginning with spreadsheet formula prefixes (including leading whitespace/control characters).
+- EXPORT-03 Export generation is audited with format, filter scope, filename and row count.
+- HIST-01 Import history lists only the selected company's ImportBatch records and paginated source rows.
+- HIST-02 Import history retains row status, source row/page/table provenance, issue codes and review-decision metadata.
+- AUD-04 Audit trail displays company-scoped event metadata only; sensitive before/after JSON is not exposed in the current UI.
+- EXPORT-04 CSV/PDF export is capped at 10,000 rows and rejects larger result sets with a clear error.
+All Phase 6 criteria require a green CI run for the exact PR head; manual browser verification remains separate.

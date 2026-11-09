@@ -54,6 +54,12 @@ from sme_financial_dashboard.services.dashboard_service import (
     DashboardFilters,
     DashboardService,
 )
+from sme_financial_dashboard.services.reporting_service import (
+    AuditService,
+    ExportService,
+    ImportHistoryService,
+    ReportingError,
+)
 
 st.set_page_config(page_title="SME Financial Dashboard", page_icon="📊", layout="wide")
 
@@ -403,6 +409,14 @@ if companies:
                 key=f"dashboard_direction_{chosen}",
             )
 
+        dashboard_filters = DashboardFilters(
+            start_date=dashboard_start,
+            end_date=dashboard_end,
+            currency=dashboard_currency,
+            account_name=dashboard_account,
+            category_id=dashboard_category,
+            direction=dashboard_direction,
+        )
         report = None
         try:
             with session_factory() as db:
@@ -410,16 +424,7 @@ if companies:
                     db, user_id=user.id, company_id=chosen
                 )
                 report = DashboardService.report(
-                    db,
-                    company_context,
-                    DashboardFilters(
-                        start_date=dashboard_start,
-                        end_date=dashboard_end,
-                        currency=dashboard_currency,
-                        account_name=dashboard_account,
-                        category_id=dashboard_category,
-                        direction=dashboard_direction,
-                    ),
+                    db, company_context, dashboard_filters
                 )
         except (DashboardError, PermissionError) as exc:
             st.error(f"Dashboard could not be calculated: {exc}")
@@ -565,6 +570,77 @@ if companies:
                     BalanceStatus.CONFLICTING_SNAPSHOTS: "Multiple verified opening snapshots share the latest date. The closing balance is withheld until the conflict is resolved.",
                 }
                 st.info(balance_messages[balance.status])
+
+            st.markdown("**Filtered exports**")
+            export_scope = "|".join(
+                [
+                    dashboard_start.isoformat(),
+                    dashboard_end.isoformat(),
+                    dashboard_currency or "ALL",
+                    dashboard_account or "ALL",
+                    str(dashboard_category) if dashboard_category else "ALL",
+                    dashboard_direction.value if dashboard_direction else "ALL",
+                ]
+            )
+            for export_kind in ("csv", "pdf"):
+                scope_key = f"dashboard_export_{export_kind}_scope_{chosen}"
+                if st.session_state.get(scope_key) != export_scope:
+                    st.session_state.pop(f"dashboard_export_{export_kind}_data_{chosen}", None)
+                    st.session_state.pop(f"dashboard_export_{export_kind}_filename_{chosen}", None)
+                    st.session_state[scope_key] = export_scope
+
+            export_col_a, export_col_b = st.columns(2)
+            with export_col_a:
+                if st.button("Prepare filtered CSV", key=f"prepare_csv_{chosen}"):
+                    try:
+                        with session_factory() as db, db.begin():
+                            company_context = resolve_company_context(
+                                db, user_id=user.id, company_id=chosen
+                            )
+                            artifact = ExportService.export_csv(
+                                db, company_context, dashboard_filters
+                            )
+                        st.session_state[f"dashboard_export_csv_data_{chosen}"] = artifact.data
+                        st.session_state[f"dashboard_export_csv_filename_{chosen}"] = artifact.filename
+                        st.success(f"CSV prepared: {artifact.row_count:,} filtered transactions.")
+                    except (ReportingError, PermissionError) as exc:
+                        st.error(f"CSV export failed: {exc}")
+                csv_data = st.session_state.get(f"dashboard_export_csv_data_{chosen}")
+                csv_filename = st.session_state.get(f"dashboard_export_csv_filename_{chosen}")
+                if csv_data and csv_filename:
+                    st.download_button(
+                        "Download CSV",
+                        data=csv_data,
+                        file_name=csv_filename,
+                        mime="text/csv; charset=utf-8",
+                        key=f"download_csv_{chosen}",
+                    )
+
+            with export_col_b:
+                if st.button("Prepare filtered PDF", key=f"prepare_pdf_{chosen}"):
+                    try:
+                        with session_factory() as db, db.begin():
+                            company_context = resolve_company_context(
+                                db, user_id=user.id, company_id=chosen
+                            )
+                            artifact = ExportService.export_pdf(
+                                db, company_context, dashboard_filters
+                            )
+                        st.session_state[f"dashboard_export_pdf_data_{chosen}"] = artifact.data
+                        st.session_state[f"dashboard_export_pdf_filename_{chosen}"] = artifact.filename
+                        st.success(f"PDF prepared: {artifact.row_count:,} filtered transactions.")
+                    except (ReportingError, PermissionError) as exc:
+                        st.error(f"PDF export failed: {exc}")
+                pdf_data = st.session_state.get(f"dashboard_export_pdf_data_{chosen}")
+                pdf_filename = st.session_state.get(f"dashboard_export_pdf_filename_{chosen}")
+                if pdf_data and pdf_filename:
+                    st.download_button(
+                        "Download PDF",
+                        data=pdf_data,
+                        file_name=pdf_filename,
+                        mime="application/pdf",
+                        key=f"download_pdf_{chosen}",
+                    )
 
         if workspace_context.role in {MembershipRole.ADMIN, MembershipRole.ACCOUNTANT}:
             with st.expander("Register a verified or provisional opening balance", expanded=False):
@@ -1459,3 +1535,99 @@ if companies:
                         st.error("You are no longer authorized to review this company data.")
         except PermissionError:
             st.error("You are not authorized to access the import review queue.")
+
+
+# Phase 6 — import history, export provenance and company-scoped audit views.
+if companies:
+    st.divider()
+    st.subheader("Import history")
+    try:
+        with session_factory() as db:
+            company_context = resolve_company_context(
+                db, user_id=user.id, company_id=chosen
+            )
+            history_batches = ImportHistoryService.list_batches(
+                db, company_context, limit=100
+            )
+        if history_batches:
+            batch_labels = {
+                batch.id: (
+                    f"{batch.file_name} · {batch.status.value} · "
+                    f"{batch.created_at.strftime('%Y-%m-%d %H:%M')}"
+                )
+                for batch in history_batches
+            }
+            selected_history_batch_id = st.selectbox(
+                "Select an import batch",
+                options=list(batch_labels),
+                format_func=lambda value: batch_labels[value],
+                key=f"history_batch_{chosen}",
+            )
+            with session_factory() as db:
+                company_context = resolve_company_context(
+                    db, user_id=user.id, company_id=chosen
+                )
+                history_rows = ImportHistoryService.list_rows(
+                    db, company_context, batch_id=selected_history_batch_id, limit=100
+                )
+            st.dataframe(
+                [
+                    {
+                        "Source row": row.source_row_number,
+                        "PDF page": row.source_page_number,
+                        "PDF table": row.source_table_index,
+                        "Status": row.row_status.value,
+                        "Issues": ", ".join(
+                            issue.get("code", "UNKNOWN") for issue in row.issues_json
+                        ),
+                        "Transaction linked": row.transaction_id is not None,
+                        "Review decision": (
+                            row.review_decision.value if row.review_decision else None
+                        ),
+                        "Reviewed at": row.reviewed_at,
+                    }
+                    for row in history_rows
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
+        else:
+            st.info("No import batches have been recorded for this company.")
+    except (ReportingError, PermissionError) as exc:
+        st.error(f"Import history is unavailable: {exc}")
+
+    st.subheader("Audit trail")
+    if workspace_context.role in {MembershipRole.ADMIN, MembershipRole.ACCOUNTANT}:
+        try:
+            with session_factory() as db:
+                company_context = resolve_company_context(
+                    db, user_id=user.id, company_id=chosen
+                )
+                audit_events = AuditService.list_events(
+                    db, company_context, limit=100
+                )
+            if audit_events:
+                st.dataframe(
+                    [
+                        {
+                            "Time (UTC)": (
+                                event.created_at.isoformat()
+                                if event.created_at
+                                else None
+                            ),
+                            "Action": event.action,
+                            "Entity": event.entity_type,
+                            "Entity ID": str(event.entity_id),
+                            "Actor ID": str(event.actor_user_id),
+                        }
+                        for event in audit_events
+                    ],
+                    use_container_width=True,
+                    hide_index=True,
+                )
+            else:
+                st.info("No company audit events have been recorded yet.")
+        except (ReportingError, PermissionError) as exc:
+            st.error(f"Audit history is unavailable: {exc}")
+    else:
+        st.info("Audit trail access is restricted to ADMIN and ACCOUNTANT roles.")

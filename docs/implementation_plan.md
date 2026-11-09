@@ -19,8 +19,8 @@ Category CRUD, deterministic rules/conflict handling, manual correction and befo
 ## Phase 5 — Dashboard [COMPLETE — automated CI; manual browser smoke test outstanding]
 Canonical filters; inflow/outflow/net; conditional balances; monthly charts, top spend/counterparties and period comparison; independent Decimal reconciliation. Exit AC-04.
 
-## Phase 6 — Exports and history
-CSV/PDF from same filtered report DTO; formula injection defense; import history and audit views; tenant/filter export tests. Exit AC-05.
+## Phase 6 — Exports and history [IN PROGRESS]
+CSV/PDF exports are generated from the same company-scoped DashboardFilters and validated active transaction query. CSV text formula prefixes are neutralized; PDF includes period, selected filters, per-currency totals and the filtered detail rows. ImportBatch/ImportRow provenance is accessible through company-scoped import history; audit views are restricted to ADMIN/ACCOUNTANT. Exports are audited when prepared. Automated tests cover filtering, formula escaping, PDF fidelity, roles, tenant scope, pagination and export limits. Exit AC-05 and EXP/AUD criteria after exact-head CI passes and manual UI validation is completed.
 
 ## Phase 7 — Synthetic data and QA
 Generate 12 months for three SME profiles with deliberate noisy rows. Run unit/integration/workflow/security tests; backup/restore; independent QA report; fix in-scope P0/P1 and rerun. Exit AC-06 and all required tests.
@@ -143,3 +143,15 @@ Implemented:
 Automated evidence: commit \`62eb759f2c5c480a7b7385d6939d1d7377bc398e\`, PR #6 CI run \`42637974318\`, Python 3.11/3.12/3.13 each passed Ruff, 120 tests, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign_key_check.
 
 **Still open:** manual browser testing of filter changes, charts, snapshot creation and balance unavailability states; independent security review; concurrency-safe DB uniqueness for duplicate snapshot submissions. The service checks duplicates and the report withholds balances for multiple latest-date snapshots, but the initial schema does not include a unique snapshot key.
+
+
+## Phase 6 implementation details — 2026-11-09
+- \`DashboardService.transactions\` exposes the exact same validated, non-deleted, company-scoped filters as the Dashboard report.
+- CSV and PDF exports share inclusive dates, currency, account, category and direction filters. They do not aggregate across currencies.
+- CSV text columns neutralize spreadsheet formula prefixes after leading whitespace/control characters; numeric amounts are emitted separately as positive decimal text.
+- PDF exports contain company and filter metadata, cash-flow totals per currency, and the filtered transaction details. Long text cells are escaped and wrapped.
+- Exports are limited to 10,000 rows; the query requests at most 10,001 rows to detect an over-limit result without unbounded export materialization.
+- Export preparation is written to AuditEvent with format, filename, row count and selected filters.
+- Import history reuses ImportBatch and ImportRow; it displays file, status, row provenance, issue codes and review metadata without creating a parallel data store.
+- Audit history is company-scoped and restricted to ADMIN/ACCOUNTANT. The UI shows event metadata only, not before/after JSON payloads.
+- No schema migration is expected for Phase 6.

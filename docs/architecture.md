@@ -41,8 +41,9 @@ TransactionService.list(filters, CompanyContext) → scoped DTOs.
 TransactionService.update_category(transaction_id, category_id, actor_context) → updated DTO + audit.
 Category/Rule services create/update with validation and audit.
 DashboardService.report(filters, CompanyContext) → Decimal KPIs, previous-period comparison, monthly values, spend rankings and conditional balance state. AccountSnapshotService creates/list opening-balance evidence with role checks and audit.
-ExportService.export(filters, format, CompanyContext) → filtered CSV/PDF bytes.
-AuditService.list(filters, CompanyContext) → scoped events.
+ExportService.export_csv/export_pdf(filters, CompanyContext) → filtered CSV/PDF artifact with content type, filename and row count. Both call the same validated transaction filter query used by DashboardService.
+ImportHistoryService.list_batches/list_rows(CompanyContext) → company-scoped import provenance.
+AuditService.list_events(CompanyContext) → company-scoped events; requires VIEW_AUDIT.
 No public HTTP API required for MVP.
 
 ## Approved permissions
@@ -148,3 +149,14 @@ Workspace service inputs now normalize invalid values into explicit WorkspaceErr
 - For an account/currency, the most recent unique verified snapshot at or before end_date is selected. A conflicting set at the latest date makes the balance unavailable. Treat as_of_date as the start of day and include same-day activity through end_date.
 - A closing balance is only meaningful for a single account and currency with no category/direction subset. Otherwise show an explicit unavailable reason.
 - Plotly chart values may be converted to float only for visualization; all totals and reconciliations remain Decimal.
+
+
+## Phase 6 export and history contract
+- Export filters are exactly DashboardFilters: inclusive start/end dates and optional currency/account/category/direction. The selected company is always resolved from active workspace membership; a caller-supplied company_id is never trusted without re-resolution.
+- Exports include only validated, non-deleted transactions. No currency conversion or cross-currency aggregation is performed.
+- CSV includes transaction date, value date, positive Decimal amount, currency, direction, account, category, description, counterparty and reference. Text cells are prefixed with an apostrophe when formula-like content is detected after leading whitespace/control characters; numeric amount fields remain numeric text.
+- PDF includes company name, selected period/filters, cash-flow totals grouped by currency and the exact filtered transaction detail. XML text is escaped and long cell contents wrap.
+- Export generation is capped at 10,000 rows. The service reads at most 10,001 rows to detect over-limit results and refuses to create an oversized artifact.
+- Each prepared export records an AuditEvent with format, filename, row count and filters. This event records preparation, not proof that the user completed a browser download.
+- Import history is a read projection over ImportBatch/ImportRow, preserving original source metadata and PDF page/table/row provenance.
+- AuditService only returns the active company's events and enforces VIEW_AUDIT. The first UI version exposes event metadata and does not render before_json/after_json payloads.

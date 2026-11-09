@@ -84,3 +84,10 @@ User adds `must_change_password` to force newly provisioned users to replace tem
 - AccountSnapshot.as_of_date is the start of the day before transactions dated that day. A closing balance is calculated from a unique verified snapshot for the selected company/account/currency plus all validated net movements from as_of_date through the report end date, inclusive.
 - No account or currency selection, category/direction subsetting, absence of a verified snapshot, or conflicting verified snapshots means the closing balance is explicitly unavailable.
 - Snapshot creation requires ADMIN or ACCOUNTANT, an evidence description, a Decimal opening amount (up to six places) and an explicit verification checkbox. Every creation is audited. A provisional snapshot is not used as opening balance evidence.
+
+
+## Phase 6 exports and history — no new persistence entities
+- CSV/PDF artifacts are generated on demand and are not stored as financial records.
+- Export preparation is recorded in the existing AuditEvent entity using \`EXPORT_CSV_PREPARED\` or \`EXPORT_PDF_PREPARED\`, with company, actor, date range, selected filters, safe filename and row count.
+- Import history is a company-scoped view over ImportBatch and ImportRow. Original row values, issues, review metadata and source page/table/row provenance remain in their existing columns.
+- No export file contents or duplicated import-history data are persisted in the MVP.
