@@ -117,16 +117,31 @@ The import-engine automated acceptance tests are **PASS** on final QA branch hea
 **Still BLOCKED / not performed:** manual browser-based Streamlit smoke test (login → upload → preview → confirm → verify transaction list) and third-party penetration/security review. These do not invalidate the passing automated backend/parser tests, but full release acceptance remains open until completed.
 
 
-## Phase 4 categorization and review acceptance criteria — implementation in progress
-- CAT-07 Larger numeric priority wins; only a unique top-priority rule may assign a category.
-- CAT-08 Equal highest-priority matches return NEEDS_REVIEW and do not auto-assign.
-- CAT-09 A manual category assignment is audited and not overwritten by rule application.
-- CAT-10 Category kind must be BOTH or match the transaction's INFLOW/OUTFLOW direction.
-- CAT-11 Confirmed imports apply company-scoped rules within the same atomic batch commit.
-- REV-01 Review queue lists only pending REVIEW rows in the active company and is accessible only to ADMIN/ACCOUNTANT.
-- REV-02 CONFIRMED_DUPLICATE and REJECTED decisions update row status, reviewer, time, note and audit.
-- REV-03 CORRECTED_AND_ACCEPTED requires validated corrected values and a manual unique reference, creates a transaction and links the source row atomically.
-- REV-04 A corrected acceptance preserves the original ImportRow source fingerprint; re-importing the same reference-less source row returns it to REVIEW rather than silently creating another transaction.
-- REV-05 Review decisions and corrected transactions are audited; batch counters/status are recomputed.
-- REV-06 Repeated decisions on a non-REVIEW row are denied; duplicate fingerprint collision rolls back the decision.
-All Phase 4 criteria remain BLOCKED until latest branch-head CI and workflow evidence pass. Manual browser-based QA also remains required.
+## Phase 4 categorization and review acceptance criteria — automated PASS
+- CAT-07 Larger numeric priority wins; only a unique top-priority rule may assign a category — PASS, \`test_higher_numeric_priority_wins_and_repeat_application_is_idempotent\`.
+- CAT-08 Equal highest-priority matches return NEEDS_REVIEW and do not auto-assign — PASS, \`test_tied_highest_priority_rules_require_manual_review\`.
+- CAT-09 A manual category assignment is audited and not overwritten by rule application — PASS, \`test_manual_category_assignment_is_audited_and_not_overwritten_by_rules\`.
+- CAT-10 Category kind must be BOTH or match the transaction's INFLOW/OUTFLOW direction — PASS, \`test_category_kind_must_match_transaction_direction\`.
+- CAT-11 Confirmed imports apply company-scoped rules within the same atomic batch commit — PASS, \`test_confirmed_import_applies_unique_matching_category_rule\`.
+- REV-01 Review queue is company-scoped and unavailable to VIEWER — PASS, \`test_review_queue_is_company_scoped_and_viewer_cannot_access\`.
+- REV-02 Duplicate/reject decisions update status, reviewer, time, note and audit — PASS, \`test_review_resolution_can_confirm_duplicate_or_reject_with_audit\`.
+- REV-03 Corrected acceptance validates values/manual reference and links the transaction — PASS, \`test_corrected_review_row_creates_transaction_with_manual_reference\` and negative validation tests.
+- REV-04 Original source fingerprint is preserved and reference-less re-import returns to REVIEW — PASS, \`test_reference_less_row_reimport_after_manual_acceptance_returns_to_review\`.
+- REV-05 Review decisions and corrected transactions are audited; batch counters/status are recomputed — PASS, integration review-resolution tests.
+- REV-06 Repeated decisions and reference/fingerprint collisions are rejected without linking an invalid transaction — PASS, integration review-resolution tests.
+- CI evidence: main commit \`41cf26cb5231ceb3e540f402fb9b944048a2315e\`, GitHub Actions run \`42634994455\`; Python 3.11/3.12/3.13 each passed Ruff, 110 tests, Alembic round-trip and SQLite foreign_key_check.
+- **Still BLOCKED:** manual browser-based Streamlit smoke test and independent security review. Phase 4 automated backend/CI acceptance is PASS; full release acceptance is not closed.
+
+## Phase 5 dashboard acceptance criteria — automated PASS
+- DASH-01 Inclusive date/currency/account/category/direction filters are company-scoped and applied equally to current and comparison periods — PASS, dashboard filter integration tests.
+- DASH-02 Only validated, non-deleted transactions are included; REVIEW/staged, deleted and unvalidated records are excluded — PASS, \`test_report_uses_decimal_and_keeps_currency_partitions_and_rankings_separate\`.
+- DASH-03 Inflows, outflows and net cash flow use Decimal and remain partitioned by currency — PASS, independent XAF/USD expected-value assertions in the dashboard integration suite.
+- DASH-04 Monthly cash flow emits month/currency buckets and direction totals — PASS, dashboard monthly aggregation tests.
+- DASH-05 Top spending categories and counterparties rank outflows independently per currency — PASS, dashboard ranking integration test.
+- DASH-06 Period comparison uses the immediately preceding equal-length interval and same non-date filters — PASS, \`test_comparison_uses_equal_length_previous_period_and_same_filters\`.
+- DASH-07 Closing balance requires one account/currency, no category/direction subset and the latest unique verified snapshot — PASS, snapshot balance integration tests.
+- DASH-08 Missing verified evidence and conflicting latest snapshots make the balance unavailable — PASS, \`test_balance_is_unavailable_without_required_scope_snapshot_or_unfiltered_flow\` and \`test_conflicting_latest_verified_snapshots_make_closing_balance_unavailable\`.
+- DASH-09 Snapshot creation is company-scoped, role-authorized, Decimal-validated and audited; provisional snapshots do not affect balances — PASS, \`test_snapshot_creation_is_audited_company_scoped_and_validated\` and VIEWER denial test.
+- DASH-10 Independent Decimal expected-value checks validate current totals and closing balance — PASS, dashboard reporting integration tests.
+- CI evidence: branch head \`62eb759f2c5c480a7b7385d6939d1d7377bc398e\`, run \`42637974318\`; Python 3.11, 3.12 and 3.13 each passed Ruff, 120 tests, Alembic round-trip and SQLite foreign_key_check.
+- **Still BLOCKED:** manual browser smoke test and independent security review. Concurrent duplicate opening-snapshot submissions are only guarded by the service lookup in this iteration; database-level uniqueness is a follow-up hardening item.

@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import hashlib
+from datetime import date, datetime, timedelta
+from decimal import Decimal
+from zoneinfo import ZoneInfo
 
+import plotly.graph_objects as go
 import streamlit as st
 from sqlalchemy import select
 from sme_financial_dashboard.config import Settings
 from sme_financial_dashboard.db.models import (
     BootstrapState,
     CategoryKind,
+    Direction,
     MatchField,
     MatchOperator,
     MembershipRole,
@@ -42,6 +47,13 @@ from sme_financial_dashboard.services.review_service import (
     ReviewService,
 )
 from sme_financial_dashboard.db.models import ReviewDecision
+from sme_financial_dashboard.services.dashboard_service import (
+    AccountSnapshotService,
+    BalanceStatus,
+    DashboardError,
+    DashboardFilters,
+    DashboardService,
+)
 
 st.set_page_config(page_title="SME Financial Dashboard", page_icon="📊", layout="wide")
 
@@ -319,6 +331,309 @@ with col_b:
                             st.error(str(exc))
     else:
         st.caption("Only workspace ADMIN can manage members.")
+
+
+# Phase 5 — financial dashboard and verified opening-balance context.
+if companies:
+    st.divider()
+    st.subheader("Financial dashboard")
+    active_company = next(company for company in companies if company.id == chosen)
+    try:
+        with session_factory() as db:
+            company_context = resolve_company_context(
+                db, user_id=user.id, company_id=chosen
+            )
+            dashboard_options = DashboardService.filter_options(db, company_context)
+            recent_snapshots = AccountSnapshotService.list_recent(db, company_context)
+    except (DashboardError, PermissionError) as exc:
+        st.error(f"Dashboard options could not be loaded: {exc}")
+    else:
+        try:
+            today = datetime.now(ZoneInfo(active_company.timezone)).date()
+        except Exception:
+            today = date.today()
+        default_start = today - timedelta(days=29)
+        date_col_a, date_col_b = st.columns(2)
+        with date_col_a:
+            dashboard_start = st.date_input(
+                "Start date",
+                value=default_start,
+                key=f"dashboard_start_{chosen}",
+            )
+        with date_col_b:
+            dashboard_end = st.date_input(
+                "End date",
+                value=today,
+                key=f"dashboard_end_{chosen}",
+            )
+
+        currency_choices = [None, *dashboard_options.currencies]
+        account_choices = [None, *dashboard_options.account_names]
+        category_ids = [category_id for category_id, _name in dashboard_options.categories]
+        category_names = dict(dashboard_options.categories)
+        category_choices = [None, *category_ids]
+        direction_choices = [None, Direction.INFLOW, Direction.OUTFLOW]
+        filter_col_a, filter_col_b, filter_col_c, filter_col_d = st.columns(4)
+        with filter_col_a:
+            dashboard_currency = st.selectbox(
+                "Currency",
+                options=currency_choices,
+                format_func=lambda value: "All currencies (separate totals)" if value is None else value,
+                key=f"dashboard_currency_{chosen}",
+            )
+        with filter_col_b:
+            dashboard_account = st.selectbox(
+                "Account",
+                options=account_choices,
+                format_func=lambda value: "All accounts" if value is None else value,
+                key=f"dashboard_account_{chosen}",
+            )
+        with filter_col_c:
+            dashboard_category = st.selectbox(
+                "Category",
+                options=category_choices,
+                format_func=lambda value: "All categories" if value is None else category_names[value],
+                key=f"dashboard_category_{chosen}",
+            )
+        with filter_col_d:
+            dashboard_direction = st.selectbox(
+                "Direction",
+                options=direction_choices,
+                format_func=lambda value: "Both directions" if value is None else value.value,
+                key=f"dashboard_direction_{chosen}",
+            )
+
+        report = None
+        try:
+            with session_factory() as db:
+                company_context = resolve_company_context(
+                    db, user_id=user.id, company_id=chosen
+                )
+                report = DashboardService.report(
+                    db,
+                    company_context,
+                    DashboardFilters(
+                        start_date=dashboard_start,
+                        end_date=dashboard_end,
+                        currency=dashboard_currency,
+                        account_name=dashboard_account,
+                        category_id=dashboard_category,
+                        direction=dashboard_direction,
+                    ),
+                )
+        except (DashboardError, PermissionError) as exc:
+            st.error(f"Dashboard could not be calculated: {exc}")
+
+        if report is not None:
+            if report.current.totals:
+                for currency_totals in report.current.totals:
+                    st.markdown(f"**{currency_totals.currency}**")
+                    metric_cols = st.columns(4)
+                    metric_cols[0].metric("Inflows", f"{currency_totals.inflows:,.6f}")
+                    metric_cols[1].metric("Outflows", f"{currency_totals.outflows:,.6f}")
+                    metric_cols[2].metric("Net cash flow", f"{currency_totals.net:,.6f}")
+                    metric_cols[3].metric("Transactions", currency_totals.transaction_count)
+            else:
+                st.info("No committed transactions match the selected period and filters.")
+
+            st.markdown("**Period comparison**")
+            previous_totals = {item.currency: item for item in report.previous.totals}
+            current_totals = {item.currency: item for item in report.current.totals}
+            comparison_currencies = sorted(set(previous_totals) | set(current_totals))
+            if comparison_currencies:
+                comparison_rows = []
+                for currency in comparison_currencies:
+                    current = current_totals.get(currency)
+                    previous = previous_totals.get(currency)
+                    current_net = current.net if current is not None else Decimal("0")
+                    previous_net = previous.net if previous is not None else Decimal("0")
+                    comparison_rows.append(
+                        {
+                            "Currency": currency,
+                            "Current net": f"{current_net:,.6f}",
+                            "Previous net": f"{previous_net:,.6f}",
+                            "Change": f"{current_net - previous_net:,.6f}",
+                            "Current transactions": current.transaction_count if current else 0,
+                            "Previous transactions": previous.transaction_count if previous else 0,
+                        }
+                    )
+                st.caption(
+                    f"Current: {report.current.start_date.isoformat()} to {report.current.end_date.isoformat()} · "
+                    f"Previous: {report.previous_start_date.isoformat()} to {report.previous_end_date.isoformat()}"
+                )
+                st.dataframe(comparison_rows, use_container_width=True, hide_index=True)
+            else:
+                st.caption("No transactions are available in either comparison period.")
+
+            st.markdown("**Monthly cash flow**")
+            chart_currencies = sorted({item.currency for item in report.current.monthly})
+            if chart_currencies:
+                for currency in chart_currencies:
+                    currency_months = [
+                        item for item in report.current.monthly if item.currency == currency
+                    ]
+                    figure = go.Figure()
+                    # Float conversion is confined to chart rendering; all KPIs remain Decimal.
+                    figure.add_trace(
+                        go.Bar(
+                            name="Inflows",
+                            x=[item.month for item in currency_months],
+                            y=[float(item.inflows) for item in currency_months],
+                        )
+                    )
+                    figure.add_trace(
+                        go.Bar(
+                            name="Outflows",
+                            x=[item.month for item in currency_months],
+                            y=[float(item.outflows) for item in currency_months],
+                        )
+                    )
+                    figure.update_layout(
+                        title=f"Monthly movements — {currency}",
+                        barmode="group",
+                        xaxis_title="Month",
+                        yaxis_title=f"Amount ({currency})",
+                        legend_title="Direction",
+                    )
+                    st.plotly_chart(
+                        figure,
+                        use_container_width=True,
+                        key=f"monthly_cashflow_{chosen}_{currency}",
+                    )
+                    monthly_rows = [
+                        {
+                            "Month": item.month,
+                            "Inflows": f"{item.inflows:,.6f}",
+                            "Outflows": f"{item.outflows:,.6f}",
+                            "Net": f"{item.net:,.6f}",
+                            "Transactions": item.transaction_count,
+                        }
+                        for item in currency_months
+                    ]
+                    st.dataframe(monthly_rows, use_container_width=True, hide_index=True)
+
+            st.markdown("**Top spending categories and counterparties**")
+            spend_currencies = sorted(
+                {item.currency for item in report.current.top_categories}
+                | {item.currency for item in report.current.top_counterparties}
+            )
+            for currency in spend_currencies:
+                category_rows = [
+                    {
+                        "Category": item.label,
+                        "Outflows": f"{item.amount:,.6f}",
+                        "Transactions": item.transaction_count,
+                    }
+                    for item in report.current.top_categories
+                    if item.currency == currency
+                ]
+                counterparty_rows = [
+                    {
+                        "Counterparty": item.label,
+                        "Outflows": f"{item.amount:,.6f}",
+                        "Transactions": item.transaction_count,
+                    }
+                    for item in report.current.top_counterparties
+                    if item.currency == currency
+                ]
+                spend_col_a, spend_col_b = st.columns(2)
+                with spend_col_a:
+                    st.caption(f"Categories — {currency}")
+                    st.dataframe(category_rows, use_container_width=True, hide_index=True)
+                with spend_col_b:
+                    st.caption(f"Counterparties — {currency}")
+                    st.dataframe(counterparty_rows, use_container_width=True, hide_index=True)
+
+            st.markdown("**Closing balance availability**")
+            balance = report.current.balance
+            if balance.status is BalanceStatus.AVAILABLE:
+                st.metric(
+                    f"Estimated closing balance — {balance.account_name}",
+                    f"{balance.closing_balance:,.6f} {balance.currency}",
+                )
+                st.caption(
+                    f"Opening snapshot: {balance.opening_balance:,.6f} {balance.currency} "
+                    f"as of {balance.snapshot_date.isoformat()} · {balance.source_description}. "
+                    "Transactions dated on the snapshot date are included."
+                )
+            else:
+                balance_messages = {
+                    BalanceStatus.ACCOUNT_REQUIRED: "Select one account to calculate its closing balance.",
+                    BalanceStatus.CURRENCY_REQUIRED: "Select one currency; balances are never combined across currencies.",
+                    BalanceStatus.INCOMPATIBLE_FILTERS: "Remove the category and direction filters; a closing balance requires all movements for the selected account and currency.",
+                    BalanceStatus.NO_VERIFIED_SNAPSHOT: "No verified opening-balance snapshot exists for this account and currency at or before the selected end date.",
+                    BalanceStatus.CONFLICTING_SNAPSHOTS: "Multiple verified opening snapshots share the latest date. The closing balance is withheld until the conflict is resolved.",
+                }
+                st.info(balance_messages[balance.status])
+
+        if workspace_context.role in {MembershipRole.ADMIN, MembershipRole.ACCOUNTANT}:
+            with st.expander("Register a verified or provisional opening balance", expanded=False):
+                snapshot_currency_choices = sorted(
+                    set(dashboard_options.currencies) | {active_company.base_currency}
+                )
+                default_currency_index = snapshot_currency_choices.index(active_company.base_currency)
+                with st.form(f"opening_snapshot_form_{chosen}"):
+                    snapshot_account = st.text_input("Account name", max_chars=120)
+                    snapshot_currency = st.selectbox(
+                        "Snapshot currency",
+                        options=snapshot_currency_choices,
+                        index=default_currency_index,
+                    )
+                    snapshot_date = st.date_input(
+                        "Opening balance as of",
+                        value=today,
+                        key=f"snapshot_date_{chosen}",
+                    )
+                    snapshot_amount = st.text_input("Opening balance (Decimal; up to 6 places)")
+                    snapshot_source = st.text_input(
+                        "Statement or evidence reference", max_chars=250
+                    )
+                    snapshot_verified = st.checkbox(
+                        "I have reconciled this opening balance to an authoritative statement.",
+                        value=False,
+                    )
+                    save_snapshot = st.form_submit_button("Save opening balance")
+                if save_snapshot:
+                    try:
+                        with session_factory() as db, db.begin():
+                            company_context = resolve_company_context(
+                                db, user_id=user.id, company_id=chosen
+                            )
+                            created_snapshot = AccountSnapshotService.create(
+                                db,
+                                company_context,
+                                account_name=snapshot_account,
+                                as_of_date=snapshot_date,
+                                currency=snapshot_currency,
+                                opening_balance=snapshot_amount,
+                                is_verified=snapshot_verified,
+                                source_description=snapshot_source,
+                            )
+                        if created_snapshot.is_verified:
+                            st.success("Verified opening-balance snapshot saved and audited.")
+                        else:
+                            st.warning("Provisional snapshot saved; it will not be used in closing balances.")
+                        st.rerun()
+                    except (DashboardError, PermissionError) as exc:
+                        st.error(str(exc))
+
+        if recent_snapshots:
+            st.caption("Recent opening-balance snapshots")
+            st.dataframe(
+                [
+                    {
+                        "Account": item.account_name,
+                        "As of": item.as_of_date.isoformat(),
+                        "Currency": item.currency,
+                        "Opening balance": f"{item.opening_balance:,.6f}",
+                        "Verified": item.is_verified,
+                        "Evidence": item.source_description,
+                    }
+                    for item in recent_snapshots
+                ],
+                use_container_width=True,
+                hide_index=True,
+            )
 
 
 # Phase 3 — company-scoped statement import workflow.

@@ -26,7 +26,7 @@ Allow CSV, XLSX and PDF only. Validate allowlisted extension and actual file sig
 - Fail safely on malformed/unsupported/over-limit input. Uncertain date, amount, currency, direction or table alignment must not be guessed.
 
 ## Financial contract
-amount > 0 Decimal; direction INFLOW/OUTFLOW. inflows=sum(INFLOW), outflows=sum(OUTFLOW), net=inflows-outflows. Partition by currency. Closing balance = coherent opening snapshot + net flow for same company/account/currency/period; absent snapshot => Unavailable. Label estimated/unverified balance. These are cash-management indicators, not accounting profit or certified bank balance. MonthlyMetric derived at query time.
+amount > 0 Decimal; direction INFLOW/OUTFLOW. inflows=sum(INFLOW), outflows=sum(OUTFLOW), net=inflows-outflows. Partition by currency. Closing balance = a unique verified opening snapshot + validated net flow for the same company/account/currency from the snapshot date through the report end date; absent or conflicting snapshot => Unavailable. Snapshot date is the start of day, before movements dated that day. Closing balance is displayed only for one account and currency with no category/direction filter. Label as an estimated cash-management balance, not accounting profit or a certified bank balance. MonthlyMetric derived at query time. Dashboard reports include only non-deleted, validated transactions; all financial aggregation uses Decimal and keeps currencies separate.
 
 ## Categorization contract
 Rule fields: company, category, match_field KEYWORD/COUNTERPARTY/REFERENCE, operator CONTAINS/EQUALS/STARTS_WITH, normalized match_value, integer priority, active. Unique highest-priority match assigns category; tie/no match => manual review. Manual override is audited.
@@ -40,7 +40,7 @@ ImportService.commit(preview_id, CompanyContext) → atomic batch summary or typ
 TransactionService.list(filters, CompanyContext) → scoped DTOs.
 TransactionService.update_category(transaction_id, category_id, actor_context) → updated DTO + audit.
 Category/Rule services create/update with validation and audit.
-DashboardService.summary/monthly(filters, CompanyContext) → Decimal KPIs, balance state, provenance.
+DashboardService.report(filters, CompanyContext) → Decimal KPIs, previous-period comparison, monthly values, spend rankings and conditional balance state. AccountSnapshotService creates/list opening-balance evidence with role checks and audit.
 ExportService.export(filters, format, CompanyContext) → filtered CSV/PDF bytes.
 AuditService.list(filters, CompanyContext) → scoped events.
 No public HTTP API required for MVP.
@@ -136,3 +136,15 @@ Workspace service inputs now normalize invalid values into explicit WorkspaceErr
 - Review queue is company-scoped and limited to ADMIN/ACCOUNTANT. Decisions are CONFIRMED_DUPLICATE, REJECTED or CORRECTED_AND_ACCEPTED. Every decision requires a note and records reviewer/time/decision.
 - CORRECTED_AND_ACCEPTED requires canonical ISO date, positive Decimal amount, currency, direction and a manual unique reference. This is intentionally stricter than accepting an ambiguous no-reference row without a unique distinguishing value.
 - Keep ImportRow.source_fingerprint as the original source fingerprint after manual correction. Transaction.source_fingerprint uses the corrected values and manual reference. Subsequent import of the original reference-less row is staged as REVIEW again, preventing silent double-import.
+
+
+## Phase 5 dashboard reporting contract
+- Canonical inclusive filters: start_date, end_date, optional currency, account_name, category_id and direction. Each report and comparison query re-resolves CompanyContext.
+- Reporting includes only \`deleted_at IS NULL\` and \`is_validated = true\` transactions. REVIEW rows have no Transaction and cannot enter dashboard totals.
+- Inflows, outflows and net are calculated with Decimal and partitioned per currency. No cross-currency sum/conversion is allowed.
+- The comparison period is the contiguous interval immediately before the selected period, with an identical number of days and identical non-date filters.
+- Monthly cash flow and top-10 outflow breakdowns are derived at query time and grouped by currency.
+- AccountSnapshot verification is an explicit ADMIN/ACCOUNTANT attestation with an evidence description and an audit event. Unverified snapshots remain provisional and do not support a closing balance.
+- For an account/currency, the most recent unique verified snapshot at or before end_date is selected. A conflicting set at the latest date makes the balance unavailable. Treat as_of_date as the start of day and include same-day activity through end_date.
+- A closing balance is only meaningful for a single account and currency with no category/direction subset. Otherwise show an explicit unavailable reason.
+- Plotly chart values may be converted to float only for visualization; all totals and reconciliations remain Decimal.
