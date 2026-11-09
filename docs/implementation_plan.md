@@ -187,7 +187,7 @@ The merged Phase 6 commit was followed by a matrix run that exposed a UI smoke a
 - The evidence validates services and integration tests. Manual execution of the interactive generation CLI, browser visual QA and independent external security review remain separate validation tasks.
 
 
-Post-rebase CI is required on the new exact branch head before Phase 7 can be considered merge-ready.
+**Post-rebase exact-head CI: PASS.** The current branch head `ea4036801dd3041a3a1d689f38d3289201fefbfb` passed run [42670582232](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42670582232), including 148 tests, Ruff, Alembic round-trip and SQLite foreign-key checks on Linux Python 3.11/3.12/3.13 and Windows Python 3.11. Manual release gates remain open.
 
 ### Release hardening delivery — automated CI PASS
 - Added a partial unique database index for verified opening snapshots keyed by company/account/date/currency. The migration refuses to proceed when legacy data already contains conflicting verified snapshots; it never chooses or deletes a financial value automatically.
@@ -196,7 +196,18 @@ Post-rebase CI is required on the new exact branch head before Phase 7 can be co
 - Candidate commit `118b367dc5784c5990a68590a05b08ab5800bbca` passed GitHub Actions run [42670094234](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42670094234): 148 tests on Linux Python 3.11/3.12/3.13 and Windows Python 3.11, plus Ruff, Alembic round-trip and SQLite foreign-key checks.
 - Manual Windows/WSL install, interactive synthetic CLI, browser workflow/visual QA, restore operation and independent security review remain external release gates.
 
-### Cross-platform CI hardening — implementation added; verification pending
+### Cross-platform CI hardening — PASS on exact candidate head
 - Linux matrix: Python 3.11, 3.12 and 3.13.
 - Windows runner: Windows Server with Python 3.11, running Ruff, the full unit/integration suite and migration upgrade/check/downgrade/re-upgrade with SQLite foreign-key validation.
 - Windows CI exercises the subprocess parser worker and SQLite backup/restore code on the target operating system. It does not replace manual Windows/WSL installation and browser acceptance.
+
+
+## Final development status — 2026-11-09
+
+**Implementation status: Phase 0–8 candidate implemented; automated verification PASS.**
+
+- The Phase 7–8 candidate is on `feat/phase-7-qa-tooling`, exact head `ea4036801dd3041a3a1d689f38d3289201fefbfb`.
+- Exact-head run [42670582232](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42670582232) passed all four CI jobs: 148 tests per job, Ruff, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign-key validation.
+- The completed candidate includes synthetic SME data, verified SQLite backup/restore, a uniqueness constraint for verified opening snapshots, and parser worker time limits.
+- **Release acceptance remains BLOCKED** pending clean Windows and WSL2 installation, interactive synthetic CLI use, browser visual/workflow tests, manual backup/restore, and independent external security review.
+- Do not claim production readiness or public multi-user hosting. SQLite remains local single-instance; the parser worker is not an OS sandbox and has no memory quota.

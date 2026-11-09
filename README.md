@@ -185,4 +185,12 @@ Restore only after stopping Streamlit. The command verifies SQLite integrity and
 The Phase 7 synthetic dataset and SQLite backup/restore work on branch \`feat/phase-7-qa-tooling\`, head \`4687979753a7f6f4f444f2b541eac965a6d3cd2c\`, passed GitHub Actions run [42651239061](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42651239061): Ruff, 142 tests per Python 3.11/3.12/3.13 job, Alembic round-trip and SQLite foreign_key_check. Per SME profile, 100 valid transactions are committed and the 4 noisy rows remain held (1 INVALID, 1 DUPLICATE, 2 REVIEW). This is feature-branch evidence pending review/merge. The interactive CLI has not been run manually; browser visual QA and independent external security review remain open.
 
 
-The Phase 7 QA report is historical evidence for the implementation commit it reviewed. The exact updated development branch head must pass CI after the release-hardening changes before merge consideration.
+The Phase 7 QA report is historical evidence for the implementation commit it reviewed. The current Phase 7–8 candidate is recorded below; automated CI has passed on its exact branch head. Manual release gates remain separate.
+
+## Release-candidate status — 2026-11-09
+
+- Candidate branch: `feat/phase-7-qa-tooling`; exact head: `ea4036801dd3041a3a1d689f38d3289201fefbfb`.
+- Exact-head GitHub Actions run [42670582232](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42670582232) passed: 148 tests on Linux Python 3.11, 3.12 and 3.13, and Windows Python 3.11; Ruff, Alembic migration round-trip and SQLite foreign-key checks also passed.
+- Phase 7 synthetic data and SQLite backup/restore, plus Phase 8 verified-snapshot uniqueness and parser time limits, have automated test coverage.
+- **Not yet release-approved:** clean Windows and WSL2 installation, interactive synthetic CLI, manual browser workflow/visual QA, manual backup/restore, and independent external security review are still required.
+- Keep use local and single-instance with SQLite. Do not expose the Streamlit app publicly. Backup data must be stored on encrypted, access-controlled storage.

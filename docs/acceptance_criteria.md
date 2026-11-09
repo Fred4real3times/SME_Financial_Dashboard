@@ -1,5 +1,5 @@
 # Acceptance Criteria — SME Financial Dashboard
-**Status:** DRAFT. Every criterion requires executed evidence; BLOCKED is never PASS.
+**Status:** Candidate implementation and automated evidence recorded; final release acceptance remains BLOCKED. Every criterion requires executed evidence; BLOCKED is never PASS.
 
 ## Required acceptance
 | ID | Criterion | Evidence |
@@ -187,9 +187,19 @@ Phase 7 automated evidence (feature branch; not yet integrated into main):
 - Manual execution of the interactive CLI, browser visual QA and independent external security review remain separate release gates.
 
 
-- **Rebased PR head:** automated CI must be rerun against the new rebased commit before merge; prior feature-branch CI is not treated as evidence for the rebased commit.
+- **Rebased PR head:** exact-head automated CI has now passed on `ea4036801dd3041a3a1d689f38d3289201fefbfb` (run [42670582232](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42670582232)).
 
 ## Release hardening addendum — 2026-11-09
 - SNAP-01: the database permits at most one verified opening snapshot per company/account/date/currency, including concurrent submissions; a conflicting submission is rejected without a second audit record.
 - IMP-21: CSV/XLSX/PDF parser execution has a 30-second wall-clock deadline in a disposable child process; timeouts return the stable `PARSER_TIMEOUT` code and leave the Streamlit parent process responsive.
 - IMP-22: worksheet discovery for XLSX is subject to the same parser process deadline as full extraction.
+
+
+## Phase 8 exact-head verification — 2026-11-09
+
+- Candidate head: `ea4036801dd3041a3a1d689f38d3289201fefbfb`.
+- CI run [42670582232](https://github.com/Fred4real3times/SME_Financial_Dashboard/actions/runs/42670582232) passed on Linux Python 3.11/3.12/3.13 and Windows Python 3.11: 148 tests per job, Ruff, Alembic migration round-trip and SQLite foreign-key validation.
+- SNAP-01 (one verified opening snapshot per company/account/date/currency), IMP-21 (30-second parser worker deadline), and IMP-22 (bounded XLSX worksheet discovery) are included in the 148-test candidate suite.
+- **Automated candidate checks: PASS.** This does not mark manual acceptance complete.
+- **Still BLOCKED:** clean Windows and WSL2 installations; interactive synthetic data CLI; complete browser workflow and visual QA; manual backup/restore; independent external security review and remediation evidence.
+- Final release approval requires every required manual/independent gate to be completed and no unresolved P0/P1 security findings.
