@@ -20,10 +20,8 @@ from sme_financial_dashboard.db.models import (
     MembershipRole,
     Transaction,
 )
-from sme_financial_dashboard.domain.import_parsing import (
-    ImportFileError,
-    list_xlsx_worksheets,
-)
+from sme_financial_dashboard.domain.import_parsing import ImportFileError
+from sme_financial_dashboard.domain.parser_runtime import list_xlsx_worksheets_bounded
 from sme_financial_dashboard.db.session import build_engine, build_session_factory
 from sme_financial_dashboard.security.company_scope import (
     resolve_company_context,
@@ -678,7 +676,7 @@ if companies:
                 )
             elif suffix == "xlsx":
                 try:
-                    worksheets = list_xlsx_worksheets(file_bytes)
+                    worksheets = list_xlsx_worksheets_bounded(file_bytes)
                     worksheet_name = st.selectbox(
                         "Worksheet",
                         options=list(worksheets),

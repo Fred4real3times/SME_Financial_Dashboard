@@ -37,8 +37,8 @@ from sme_financial_dashboard.domain.import_parsing import (
     ImportFileError,
     ParsedDocument,
     ParsedRow,
-    inspect_statement,
 )
+from sme_financial_dashboard.domain.parser_runtime import inspect_statement_bounded
 from sme_financial_dashboard.domain.money import MoneyValidationError, parse_amount
 from sme_financial_dashboard.services.categorization_service import CategorizationService
 from sme_financial_dashboard.security.company_scope import (
@@ -433,7 +433,7 @@ class ImportService:
         encoding: str = "utf-8-sig",
         worksheet_name: str | None = None,
     ) -> ParsedDocument:
-        return inspect_statement(
+        return inspect_statement_bounded(
             file_bytes,
             file_name,
             delimiter=delimiter,
@@ -455,7 +455,7 @@ class ImportService:
         )
         require_permission(verified.role, Permission.IMPORT)
         try:
-            document = inspect_statement(
+            document = inspect_statement_bounded(
                 file_bytes,
                 file_name,
                 delimiter=mapping.delimiter,
