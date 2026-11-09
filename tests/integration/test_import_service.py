@@ -13,7 +13,11 @@ from sqlalchemy import func, select
 from conftest import seed_workspace
 from sme_financial_dashboard.db.models import (
     AuditEvent,
+    CategorizationSource,
+    CategoryKind,
     Direction,
+    MatchField,
+    MatchOperator,
     ImportBatch,
     ImportRow,
     ImportRowStatus,
@@ -30,6 +34,10 @@ from sme_financial_dashboard.services.import_service import (
     ImportMapping,
     ImportService,
     ImportStateError,
+)
+from sme_financial_dashboard.services.categorization_service import (
+    CategoryService,
+    CategorizationRuleService,
 )
 
 
@@ -438,3 +446,61 @@ def test_preview_chunks_duplicate_fingerprint_lookup_for_large_batches(session):
     assert preview.invalid_count == 0
     assert preview.duplicate_count == 0
     assert preview.review_count == 0
+
+
+
+def test_confirmed_import_applies_unique_matching_category_rule(session):
+    _workspace, _user, company, context = _context(session, suffix="auto-categorization")
+    category = CategoryService.create_category(
+        session, context, name="Rent", kind=CategoryKind.OUTFLOW
+    )
+    rule = CategorizationRuleService.create_rule(
+        session,
+        context,
+        category_id=category.id,
+        match_field=MatchField.KEYWORD,
+        operator=MatchOperator.CONTAINS,
+        match_value="rent",
+        priority=100,
+    )
+    mapping = ImportMapping(
+        columns={
+            "transaction_date": 0,
+            "amount": 1,
+            "currency": 2,
+            "direction": 3,
+            "reference": 4,
+            "counterparty": 5,
+            "description": 6,
+        },
+        date_format="%d/%m/%Y",
+        decimal_separator=",",
+        thousands_separator=".",
+        delimiter=";",
+    )
+    content = (
+        b"Date;Amount;Currency;Direction;Reference;Counterparty;Description\n"
+        b"01/01/2026;150000,00;XAF;DEBIT;RENT-001;Landlord;Monthly rent payment\n"
+    )
+    preview = ImportService.preview(
+        session, file_bytes=content, file_name="rent.csv", mapping=mapping, context=context
+    )
+    assert preview.valid_count == 1
+    summary = ImportService.commit(
+        session, preview_id=preview.preview_id, context=context, confirm=True
+    )
+    session.flush()
+
+    transaction = session.scalar(
+        select(Transaction).where(Transaction.company_id == company.id)
+    )
+    assert summary.imported_count == 1
+    assert transaction.category_id == category.id
+    assert transaction.categorization_source is CategorizationSource.RULE
+    assert transaction.categorization_rule_id == rule.id
+    assert session.scalar(
+        select(func.count()).select_from(AuditEvent).where(
+            AuditEvent.entity_id == transaction.id,
+            AuditEvent.action == "CATEGORIZATION_RULE_APPLIED",
+        )
+    ) == 1

@@ -123,3 +123,16 @@ Workspace service inputs now normalize invalid values into explicit WorkspaceErr
 - PDF ingestion is limited to 100 pages, 50 detected tables per page, 250,000 extracted characters per page, 5,000,000 extracted characters per document and 10,000 data rows. Table rows must have exactly the detected header width; ambiguous rows are rejected. Encrypted PDFs receive a stable unsupported-file error.
 - Existing-transaction fingerprint lookups are chunked in groups of 500 to remain below SQLite's historical bind-parameter limit. Import commits insert candidate transactions in a batch, flush them, then set ImportRow transaction links in a second flush, all inside the same savepoint.
 - Parser controls are resource bounds, not a hard wall-clock CPU timeout. The app remains a local, single-instance application; do not expose the upload parser as a public service without process-level resource controls and separate security review.
+
+
+## Phase 4 — categorization and manual REVIEW resolution
+- One primary Category FK remains the only category assignment per Transaction; split allocations remain out of MVP.
+- Category kinds INFLOW/OUTFLOW/BOTH must be compatible with the transaction direction.
+- CategorizationRule matches KEYWORD (description), COUNTERPARTY or REFERENCE using CONTAINS/EQUALS/STARTS_WITH after Unicode NFKC, whitespace collapse and casefold normalization.
+- Higher numeric priority wins. A unique highest-priority match applies the rule; a tie produces NEEDS_REVIEW and no automatic category. No match leaves the transaction uncategorized.
+- Manual category assignments are audited, set categorization_source=MANUAL and are not overwritten by automated rules. Rule-based category changes/clears are audited.
+- Confirmed imports apply one company-scoped rule snapshot to the batch inside the same atomic commit. REVIEW-corrected transactions run through the same rule engine.
+- Category deactivation is blocked while active rules reference it; categories are deactivated, not physically deleted.
+- Review queue is company-scoped and limited to ADMIN/ACCOUNTANT. Decisions are CONFIRMED_DUPLICATE, REJECTED or CORRECTED_AND_ACCEPTED. Every decision requires a note and records reviewer/time/decision.
+- CORRECTED_AND_ACCEPTED requires canonical ISO date, positive Decimal amount, currency, direction and a manual unique reference. This is intentionally stricter than accepting an ambiguous no-reference row without a unique distinguishing value.
+- Keep ImportRow.source_fingerprint as the original source fingerprint after manual correction. Transaction.source_fingerprint uses the corrected values and manual reference. Subsequent import of the original reference-less row is staged as REVIEW again, preventing silent double-import.

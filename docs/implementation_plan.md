@@ -96,3 +96,13 @@ The branch-head CI run for the 88-test baseline is 42623281625 on commit 8a855c2
 
 ## Final Phase 3 QA verification — 2026-11-09
 Final QA branch head `5471e5851c347237a7b1cebea15427d67770d24a` passed GitHub Actions run `42623635331` on Python 3.11, 3.12 and 3.13. Each version passed Ruff, 92 tests, Alembic upgrade/check/downgrade/re-upgrade and SQLite foreign_key_check. Phase 3 backend/parser automation is validated. Manual Streamlit browser smoke testing and an external security review remain outstanding; release acceptance is not fully closed.
+
+
+## Phase 4 — categorization and review queue [IN PROGRESS]
+Backend services and Streamlit screens are being added on feat/phase-4-categorization-review:
+- Category creation/list/update/deactivation with company scope and audit; one primary category only.
+- Categorization rule CRUD and deterministic matching on description keyword, counterparty or reference.
+- Higher numeric priority wins; ties produce NEEDS_REVIEW; direction compatibility required; manual assignments are protected.
+- Confirmed imports apply rules once per batch. Corrected REVIEW acceptance uses the same rule engine.
+- Review queue decisions: CONFIRMED_DUPLICATE, REJECTED, CORRECTED_AND_ACCEPTED; corrected acceptance requires a unique manual reference and preserves the original source fingerprint for future re-import detection.
+Exit requires CAT-07..CAT-11 and REV-01..REV-06 automated evidence plus manual Streamlit smoke testing. No Phase 4 code is merged to main.
