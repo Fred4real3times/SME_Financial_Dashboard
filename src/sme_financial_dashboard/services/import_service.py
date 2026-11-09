@@ -198,7 +198,7 @@ def _clean_cell(value: Any) -> str:
         return ""
     text = value.isoformat() if hasattr(value, "isoformat") else str(value)
     text = "".join(ch for ch in text if ch in "\t" or ord(ch) >= 32)
-    return text.strip()[:500]
+    return text.strip()
 
 
 def _safe_file_name(file_name: str) -> str:
@@ -210,7 +210,7 @@ def _safe_file_name(file_name: str) -> str:
 
 def _row_values(document: ParsedDocument, row: ParsedRow) -> dict[str, str]:
     return {
-        header: _clean_cell(row.values[index] if index < len(row.values) else "")
+        header: _clean_cell(row.values[index] if index < len(row.values) else "")[:500]
         for index, header in enumerate(document.headers)
     }
 
@@ -324,8 +324,6 @@ def _normalize_candidate(
     if issues or transaction_date is None or amount is None or direction is None:
         return _Candidate(row, raw_values, None, None, _optional(row, mapping, "reference") or "", ImportRowStatus.INVALID, issues)
 
-    reference = _optional(row, mapping, "reference") or ""
-    counterparty = _optional(row, mapping, "counterparty")
     value_date = None
     if "value_date" in mapping.columns:
         try:
@@ -341,8 +339,29 @@ def _normalize_candidate(
                 ImportRowStatus.INVALID,
                 [{"code": "VALUE_DATE_INVALID", "message": str(exc)}],
             )
-    description = _optional(row, mapping, "description")
-    account_name = _optional(row, mapping, "account_name")
+    optional_values = {
+        "description": _optional(row, mapping, "description"),
+        "counterparty": _optional(row, mapping, "counterparty"),
+        "reference": _optional(row, mapping, "reference"),
+        "account_name": _optional(row, mapping, "account_name"),
+    }
+    field_limits = {"description": 500, "counterparty": 200, "reference": 200, "account_name": 120}
+    length_issues = [
+        {
+            "code": "FIELD_TOO_LONG",
+            "message": f"{field_name} exceeds its {field_limits[field_name]}-character limit.",
+        }
+        for field_name, value in optional_values.items()
+        if value is not None and len(value) > field_limits[field_name]
+    ]
+    reference = optional_values["reference"] or ""
+    if length_issues:
+        return _Candidate(
+            row, raw_values, None, None, reference, ImportRowStatus.INVALID, length_issues
+        )
+    description = optional_values["description"]
+    counterparty = optional_values["counterparty"]
+    account_name = optional_values["account_name"]
     normalized = {
         "transaction_date": transaction_date.isoformat(),
         "value_date": value_date,

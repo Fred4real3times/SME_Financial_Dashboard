@@ -211,3 +211,123 @@ def test_user_cannot_forge_company_context_for_another_workspace(session):
         ImportService.preview(
             session, file_bytes=content, file_name="bank.csv", mapping=_mapping(), context=forged
         )
+
+
+
+def _pdf_statement() -> bytes:
+    output = BytesIO()
+    document = SimpleDocTemplate(output)
+    table = Table(
+        [
+            ["Date", "Amount", "Currency", "Direction", "Reference", "Counterparty"],
+            ["2026-01-01", "250.00", "XAF", "INFLOW", "PDF-1", "Client PDF"],
+        ],
+        colWidths=[90, 70, 60, 80, 80, 110],
+    )
+    table.setStyle(TableStyle([("GRID", (0, 0), (-1, -1), 0.8, colors.black)]))
+    document.build([table])
+    return output.getvalue()
+
+
+def test_pdf_import_keeps_page_table_row_provenance_through_commit(session):
+    _workspace, _user, company, context = _context(session, suffix="pdf")
+    mapping = ImportMapping(
+        columns={
+            "transaction_date": 0,
+            "amount": 1,
+            "currency": 2,
+            "direction": 3,
+            "reference": 4,
+            "counterparty": 5,
+        },
+        date_format="%Y-%m-%d",
+        decimal_separator=".",
+        thousands_separator=",",
+    )
+    preview = ImportService.preview(
+        session,
+        file_bytes=_pdf_statement(),
+        file_name="digital-statement.pdf",
+        mapping=mapping,
+        context=context,
+    )
+    assert preview.file_type == "PDF"
+    assert preview.extraction_method == "PDF_TABLE"
+    assert preview.valid_count == 1
+    assert preview.sample_rows[0].source_page_number == 1
+    assert preview.sample_rows[0].source_table_index == 1
+    assert session.scalar(
+        select(func.count()).select_from(Transaction).where(Transaction.company_id == company.id)
+    ) == 0
+
+    summary = ImportService.commit(
+        session, preview_id=preview.preview_id, context=context, confirm=True
+    )
+    session.flush()
+    assert summary.imported_count == 1
+    stored_row = session.scalar(
+        select(ImportRow).where(ImportRow.import_batch_id == preview.preview_id)
+    )
+    assert stored_row.source_page_number == 1
+    assert stored_row.source_table_index == 1
+    assert stored_row.transaction_id is not None
+
+
+def test_xlsx_import_requires_and_uses_explicit_worksheet(session):
+    _workspace, _user, company, context = _context(session, suffix="xlsx")
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Transactions"
+    sheet.append(["Date", "Amount", "Currency", "Direction", "Reference", "Counterparty"])
+    sheet.append(["2026-01-02", 350.25, "XAF", "OUTFLOW", "X-1", "Supplier"])
+    output = BytesIO()
+    workbook.save(output)
+    mapping = ImportMapping(
+        columns={
+            "transaction_date": 0,
+            "amount": 1,
+            "currency": 2,
+            "direction": 3,
+            "reference": 4,
+            "counterparty": 5,
+        },
+        date_format="%Y-%m-%d",
+        decimal_separator=".",
+        thousands_separator=",",
+        worksheet_name="Transactions",
+    )
+    preview = ImportService.preview(
+        session,
+        file_bytes=output.getvalue(),
+        file_name="digital-statement.xlsx",
+        mapping=mapping,
+        context=context,
+    )
+    assert preview.file_type == "XLSX"
+    assert preview.extraction_method == "XLSX_SHEET"
+    assert preview.valid_count == 1
+    summary = ImportService.commit(
+        session, preview_id=preview.preview_id, context=context, confirm=True
+    )
+    session.flush()
+    assert summary.imported_count == 1
+    transaction = session.scalar(
+        select(Transaction).where(Transaction.company_id == company.id)
+    )
+    assert transaction.amount == Decimal("350.25")
+    assert transaction.direction is Direction.OUTFLOW
+
+
+def test_optional_text_over_column_length_is_invalid_not_truncated(session):
+    _workspace, _user, _company, context = _context(session, suffix="length")
+    long_counterparty = "C" * 201
+    content = (
+        "Date;Amount;Currency;Direction;Reference;Counterparty\n"
+        f"01/01/2026;100,00;XAF;CREDIT;REF-LONG;{long_counterparty}\n"
+    ).encode()
+    preview = ImportService.preview(
+        session, file_bytes=content, file_name="bank.csv", mapping=_mapping(), context=context
+    )
+    assert preview.valid_count == 0
+    assert preview.invalid_count == 1
+    assert preview.sample_rows[0].issues[0]["code"] == "FIELD_TOO_LONG"
