@@ -2,6 +2,24 @@
 
 A local-first MVP that turns SME bank statements and sales/expense exports into traceable cash-flow management information. It is **not** certified accounting software and does not replace statutory books, tax advice or a bank statement.
 
+## Interface previews
+
+The following visual previews illustrate the main workflows currently implemented in the Streamlit application. They use fictional data and are **not direct browser captures**; final runtime screenshots should replace them after the manual browser visual QA gate is completed.
+
+| Sign-in | Workspace and members |
+|---|---|
+| ![Sign-in screen](docs/screenshots/01-login.svg) | ![Workspace and members](docs/screenshots/02-workspace-members.svg) |
+
+| Financial dashboard | Statement import |
+|---|---|
+| ![Financial dashboard](docs/screenshots/03-financial-dashboard.svg) | ![Statement import workflow](docs/screenshots/04-statement-import.svg) |
+
+| Categories and manual review | Exports and history |
+|---|---|
+| ![Categories and review queue](docs/screenshots/05-categories-review.svg) | ![Exports and import history](docs/screenshots/06-exports-history.svg) |
+
+
+
 ## Approved MVP boundaries
 
 - Input formats: CSV, XLSX and text-based/digital PDF statements.

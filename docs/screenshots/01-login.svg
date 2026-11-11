@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1000" viewBox="0 0 1440 1000">
+<rect width="1440" height="1000" fill="#F5F7FB"/>
+<rect x="0" y="0" width="1440" height="86" rx="0" fill="#FFFFFF"/><text x="64" y="37" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#0F172A" font-weight="700">SME FINANCIAL DASHBOARD</text><text x="64" y="61" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="10" fill="#64748B" font-weight="600">LOCAL-FIRST SME CASH-FLOW MANAGEMENT</text>
+
+<text x="64" y="132" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="30" fill="#0F172A" font-weight="700">Sign in</text><text x="64" y="159" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#64748B" font-weight="400">Authentication screen shown after initial workspace setup.</text>
+<rect x="1190" y="111" width="188" height="30" rx="15" fill="#FFF7ED"/><text x="1202" y="131" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#9A3412" font-weight="600">VISUAL PREVIEW</text>
+
+<rect x="390" y="215" width="660" height="620" rx="20" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
+<text x="470" y="287" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="30" fill="#0F172A" font-weight="700">Welcome back</text><text x="470" y="320" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" fill="#64748B" font-weight="400">Sign in to manage your SME financial workspace.</text>
+<text x="470" y="390" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#334155" font-weight="600">Email</text><rect x="470" y="406" width="500" height="56" rx="9" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1"/><text x="488" y="441" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="16" fill="#94A3B8" font-weight="400">admin@example.com</text>
+<text x="470" y="500" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#334155" font-weight="600">Password</text><rect x="470" y="516" width="500" height="56" rx="9" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1"/><text x="488" y="551" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="18" fill="#94A3B8" font-weight="400">••••••••••••</text>
+<rect x="470" y="610" width="500" height="42" rx="9" fill="#2563EB"/><text x="486" y="637" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="15" fill="#FFFFFF" font-weight="600">Sign in</text>
+<text x="470" y="690" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#64748B" font-weight="600">New installation?</text><text x="470" y="720" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#475569" font-weight="400">Create the first ADMIN account and workspace during</text><text x="470" y="744" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="14" fill="#475569" font-weight="400">one-time setup. Bootstrap closes after successful creation.</text>
+<rect x="470" y="780" width="190" height="30" rx="15" fill="#ECFDF5"/><text x="482" y="800" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="13" fill="#047857" font-weight="600">SECURE LOCAL SESSION</text>
+
+<line x1="64" y1="950" x2="1376" y2="950" stroke="#E2E8F0" stroke-width="1"/><text x="64" y="979" font-family="Inter,Segoe UI,Arial,sans-serif" font-size="12" fill="#64748B" font-weight="400">Illustrative interface preview • Fictional data • Not a runtime screenshot</text>
+</svg>
