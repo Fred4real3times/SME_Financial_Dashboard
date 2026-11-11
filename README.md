@@ -1,6 +1,6 @@
 # SME Financial Dashboard
 
-A local-first MVP that turns SME bank statements and sales/expense exports into traceable cash-flow management information. It is **not** certified accounting software and does not replace statutory books, tax advice or a bank statement.
+A local-first MVP create by Freddy Etong that turns SME bank statements and sales/expense exports into traceable cash-flow management information. It is **not** certified accounting software and does not replace statutory books, tax advice or a bank statement.
 
 ## Interface previews
 
