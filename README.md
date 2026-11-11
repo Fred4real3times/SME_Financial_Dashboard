@@ -1,24 +1,35 @@
-# SME Financial Dashboard
+# Yiriwa Business — SME Financial Dashboard
 
 A local-first MVP create by Freddy Etong that turns SME bank statements and sales/expense exports into traceable cash-flow management information. It is **not** certified accounting software and does not replace statutory books, tax advice or a bank statement.
 
-## Interface previews
+## Interface screenshots and previews
 
-The following visual previews illustrate the main workflows currently implemented in the Streamlit application. They use fictional data and are **not direct browser captures**; final runtime screenshots should replace them after the manual browser visual QA gate is completed.
+The UI now follows the supplied **Yiriwa Business** mobile-first fintech mockup: dark navy surfaces, neon-green primary actions, coral outflow indicators, compact cards, and responsive navigation. The live application remains Streamlit and uses the repository's authenticated services and SQLite data.
 
-| Sign-in | Workspace and members |
+> **Screenshot status:** The images below are static SVG interface previews aligned with the implemented page structure. They are not yet browser captures from a running session. They contain illustrative values only. Replace them with real browser screenshots after the manual Windows/WSL2 visual QA gate.
+
+| Accueil et analyse | Transactions et détail |
 |---|---|
-| ![Sign-in screen](docs/screenshots/01-login.svg) | ![Workspace and members](docs/screenshots/02-workspace-members.svg) |
+| ![Yiriwa Business financial home preview](docs/screenshots/01-accueil.svg) | ![Yiriwa Business transactions preview](docs/screenshots/02-transactions.svg) |
 
-| Financial dashboard | Statement import |
+| Import de relevés | Catégories et revue manuelle |
 |---|---|
-| ![Financial dashboard](docs/screenshots/03-financial-dashboard.svg) | ![Statement import workflow](docs/screenshots/04-statement-import.svg) |
+| ![Yiriwa Business statement import preview](docs/screenshots/03-import.svg) | ![Yiriwa Business categories and review preview](docs/screenshots/04-categories-review.svg) |
 
-| Categories and manual review | Exports and history |
+| Exports et historique | Profil et workspace |
 |---|---|
-| ![Categories and review queue](docs/screenshots/05-categories-review.svg) | ![Exports and import history](docs/screenshots/06-exports-history.svg) |
+| ![Yiriwa Business exports preview](docs/screenshots/05-exports.svg) | ![Yiriwa Business profile and workspace preview](docs/screenshots/06-profil-workspace.svg) |
 
+### Mapping from the supplied mockup
 
+- **Accueil / Analyse:** the existing company-scoped cash-flow dashboard, period comparison, monthly movements and verified opening-balance checks.
+- **Transactions / Détail opération:** validated transactions read from the active company's database, with filters and transaction details.
+- **Importer:** the existing CSV, XLSX and text-based PDF import workflow, including validation and explicit confirmation.
+- **Catégories & revue:** deterministic category rules and the manual REVIEW queue.
+- **Exports:** filtered CSV/PDF output, import history and restricted audit history.
+- **Profil:** workspace, company and member-role management.
+
+The mockup's **bank-transfer flow is intentionally not enabled**: this MVP records and analyses imported financial transactions; it does not initiate payments or connect to bank rails. The central quick-action concept is represented by the statement-import workflow, not by a simulated transfer.
 
 ## Approved MVP boundaries
 
@@ -47,7 +58,7 @@ See `docs/` for the approved scope, architecture, data dictionary, threat model 
 ### 1. Download the project
 
 ```bash
-git clone --branch feat/phase-7-qa-tooling https://github.com/Fred4real3times/SME_Financial_Dashboard.git
+git clone https://github.com/Fred4real3times/SME_Financial_Dashboard.git
 cd SME_Financial_Dashboard
 ```
 
