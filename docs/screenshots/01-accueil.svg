@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="780" viewBox="0 0 1280 780" role="img" aria-labelledby="title desc">
+<title id="title">Accueil financier</title><desc id="desc">Vue consolidée par devise, flux de trésorerie et situation de l'entreprise active. Prévisualisation statique Yiriwa Business, données d’illustration.</desc>
+<defs>
+ <linearGradient id="bg" x2="1" y2="1"><stop stop-color="#05070c"/><stop offset="1" stop-color="#0d1422"/></linearGradient>
+ <linearGradient id="green" x2="1" y2="1"><stop stop-color="#2bffb3"/><stop offset="1" stop-color="#00b37d"/></linearGradient>
+ <linearGradient id="panel" x2="0" y2="1"><stop stop-color="#151e31"/><stop offset="1" stop-color="#101725"/></linearGradient>
+ <filter id="shadow"><feGaussianBlur stdDeviation="14"/></filter>
+</defs>
+<rect width="1280" height="780" fill="url(#bg)"/>
+<circle cx="1050" cy="25" r="250" fill="#4d8dff" opacity=".055" filter="url(#shadow)"/>
+<circle cx="320" cy="-30" r="230" fill="#00e5a0" opacity=".045" filter="url(#shadow)"/>
+<rect x="0" y="0" width="238" height="780" fill="#090e19"/>
+<path d="M238 0V780" stroke="#ffffff" opacity=".08"/>
+<rect x="25" y="25" width="42" height="42" rx="13" fill="url(#green)"/>
+<path d="M34 53 44 42l7 7 9-13M53 36h7v7" stroke="#04150d" stroke-width="2.4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="80" y="44" fill="#f2f5fa" font-size="20" font-family="Inter,Arial" font-weight="700">Yiriwa <tspan fill="#00e5a0">Business</tspan></text>
+<text x="80" y="63" fill="#8a93a8" font-size="10" font-family="Inter,Arial">FINANCIAL CONTROL TOWER</text>
+<text x="26" y="116" fill="#5f6a80" font-size="10" font-family="Inter,Arial" font-weight="700" letter-spacing="1.8">ESPACE DE TRAVAIL</text>
+<rect x="18" y="133" width="202" height="42" rx="10" fill="#132033" stroke="#00e5a0" stroke-opacity=".22"/>
+<circle cx="38" cy="154" r="5" fill="#00e5a0"/><text x="53" y="158" fill="#f2f5fa" font-size="12" font-family="Inter,Arial">Workspace principal</text>
+<text x="26" y="214" fill="#5f6a80" font-size="10" font-family="Inter,Arial" font-weight="700" letter-spacing="1.8">NAVIGATION</text>
+<g><text x="35" y="253" fill="#00e5a0" font-size="17" font-family="Arial">⌂</text><text x="62" y="252" fill="#f2f5fa" font-size="12" font-family="Inter,Arial" font-weight="700">Accueil</text><rect x="15" y="232" width="4" height="30" rx="2" fill="#00e5a0"/></g><g><text x="35" y="301" fill="#8a93a8" font-size="17" font-family="Arial">▤</text><text x="62" y="300" fill="#8a93a8" font-size="12" font-family="Inter,Arial" font-weight="500">Transactions</text></g><g><text x="35" y="349" fill="#8a93a8" font-size="17" font-family="Arial">◷</text><text x="62" y="348" fill="#8a93a8" font-size="12" font-family="Inter,Arial" font-weight="500">Importer</text></g><g><text x="35" y="397" fill="#8a93a8" font-size="17" font-family="Arial">◈</text><text x="62" y="396" fill="#8a93a8" font-size="12" font-family="Inter,Arial" font-weight="500">Catégories & revue</text></g><g><text x="35" y="445" fill="#8a93a8" font-size="17" font-family="Arial">⇩</text><text x="62" y="444" fill="#8a93a8" font-size="12" font-family="Inter,Arial" font-weight="500">Exports</text></g><g><text x="35" y="493" fill="#8a93a8" font-size="17" font-family="Arial">◎</text><text x="62" y="492" fill="#8a93a8" font-size="12" font-family="Inter,Arial" font-weight="500">Profil</text></g>
+<rect x="20" y="686" width="198" height="68" rx="13" fill="#111a2b" stroke="#ffffff" stroke-opacity=".08"/>
+<circle cx="43" cy="720" r="14" fill="#4d8dff"/><text x="43" y="724" text-anchor="middle" fill="#fff" font-size="10" font-family="Inter,Arial" font-weight="700">FE</text>
+<text x="66" y="716" fill="#f2f5fa" font-size="11" font-family="Inter,Arial" font-weight="600">Compte administrateur</text><text x="66" y="733" fill="#8a93a8" font-size="10" font-family="Inter,Arial">ADMIN · Connecté</text>
+<rect x="263" y="22" width="990" height="86" rx="18" fill="url(#panel)" stroke="#ffffff" stroke-opacity=".10"/>
+<rect x="282" y="40" width="40" height="40" rx="12" fill="url(#green)"/>
+<path d="M291 67 300 56l6 6 9-12M308 50h7v7" stroke="#04150d" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+<text x="336" y="58" fill="#f2f5fa" font-size="21" font-family="Arial" font-weight="700">Accueil financier</text>
+<text x="336" y="81" fill="#8a93a8" font-size="11.5" font-family="Arial">Vue consolidée par devise, flux de trésorerie et situation de l'entreprise active</text>
+<rect x="1085" y="47" width="145" height="31" rx="16" fill="#00e5a0" fill-opacity=".10" stroke="#00e5a0" stroke-opacity=".28"/>
+<circle cx="1101" cy="62" r="4" fill="#00e5a0"/><text x="1112" y="66" fill="#a4f7d8" font-size="10" font-family="Arial" font-weight="600">DONNÉES DÉMO</text>
+<g transform="translate(263 125)">
+ <rect width="990" height="50" rx="15" fill="#0c1320" stroke="#ffffff" stroke-opacity=".09"/>
+ <rect x="10" y="6" width="154" height="38" rx="10" fill="url(#green)"/><text x="87" y="29" text-anchor="middle" fill="#04150d" font-size="11" font-family="Arial" font-weight="700">Accueil</text><rect x="172" y="6" width="154" height="38" rx="10" fill="transparent"/><text x="249" y="29" text-anchor="middle" fill="#8a93a8" font-size="11" font-family="Arial" font-weight="700">Transactions</text><rect x="334" y="6" width="154" height="38" rx="10" fill="transparent"/><text x="411" y="29" text-anchor="middle" fill="#8a93a8" font-size="11" font-family="Arial" font-weight="700">Importer</text><rect x="496" y="6" width="154" height="38" rx="10" fill="transparent"/><text x="573" y="29" text-anchor="middle" fill="#8a93a8" font-size="11" font-family="Arial" font-weight="700">Catégories & revue</text><rect x="658" y="6" width="154" height="38" rx="10" fill="transparent"/><text x="735" y="29" text-anchor="middle" fill="#8a93a8" font-size="11" font-family="Arial" font-weight="700">Exports</text><rect x="820" y="6" width="154" height="38" rx="10" fill="transparent"/><text x="897" y="29" text-anchor="middle" fill="#8a93a8" font-size="11" font-family="Arial" font-weight="700">Profil</text>
+</g>
+<g transform="translate(284 205)">
+ <rect x="0" y="0" width="300" height="110" rx="16" fill="url(#panel)" stroke="#ffffff" stroke-opacity=".09"/><text x="17" y="26" fill="#8a93a8" font-size="11" font-family="Arial">ENTRÉES · XAF</text><text x="17" y="59" fill="#f2f5fa" font-size="24" font-family="Arial" font-weight="700">12,45 M</text><text x="17" y="81" fill="#00e5a0" font-size="10" font-family="Arial">Période sélectionnée</text>
+ <rect x="316" y="0" width="300" height="110" rx="16" fill="url(#panel)" stroke="#ffffff" stroke-opacity=".09"/><text x="333" y="26" fill="#8a93a8" font-size="11" font-family="Arial">SORTIES · XAF</text><text x="333" y="59" fill="#f2f5fa" font-size="24" font-family="Arial" font-weight="700">8,22 M</text><text x="333" y="81" fill="#00e5a0" font-size="10" font-family="Arial">Période sélectionnée</text>
+ <rect x="632" y="0" width="330" height="110" rx="16" fill="url(#panel)" stroke="#ffffff" stroke-opacity=".09"/><text x="649" y="26" fill="#8a93a8" font-size="11" font-family="Arial">FLUX NET · XAF</text><text x="649" y="59" fill="#f2f5fa" font-size="24" font-family="Arial" font-weight="700">+4,23 M</text><text x="649" y="81" fill="#00e5a0" font-size="10" font-family="Arial">Solde net des mouvements</text>
+ <rect x="0" y="132" width="610" height="325" rx="17" fill="url(#panel)" stroke="#ffffff" stroke-opacity=".09"/>
+ <text x="20" y="164" fill="#f2f5fa" font-size="14" font-family="Arial" font-weight="700">Flux mensuels · XAF</text><text x="20" y="186" fill="#8a93a8" font-size="10" font-family="Arial">Entrées et sorties sur la période</text>
+ <path d="M22 230H585" stroke="#ffffff" stroke-opacity=".055"/><path d="M22 268H585" stroke="#ffffff" stroke-opacity=".055"/><path d="M22 306H585" stroke="#ffffff" stroke-opacity=".055"/><path d="M22 344H585" stroke="#ffffff" stroke-opacity=".055"/><path d="M22 382H585" stroke="#ffffff" stroke-opacity=".055"/><path d="M22 420H585" stroke="#ffffff" stroke-opacity=".055"/>
+ <rect x="62" y="340" width="24" height="77" rx="5" fill="#00d99b"/><rect x="91" y="365" width="24" height="52" rx="5" fill="#ff8195"/><text x="89" y="434" text-anchor="middle" fill="#8a93a8" font-size="10" font-family="Arial">Juin</text><rect x="166" y="321" width="24" height="96" rx="5" fill="#00d99b"/><rect x="195" y="357" width="24" height="60" rx="5" fill="#ff8195"/><text x="193" y="434" text-anchor="middle" fill="#8a93a8" font-size="10" font-family="Arial">Juil.</text><rect x="270" y="302" width="24" height="115" rx="5" fill="#00d99b"/><rect x="299" y="349" width="24" height="68" rx="5" fill="#ff8195"/><text x="297" y="434" text-anchor="middle" fill="#8a93a8" font-size="10" font-family="Arial">Août</text><rect x="374" y="283" width="24" height="134" rx="5" fill="#00d99b"/><rect x="403" y="341" width="24" height="76" rx="5" fill="#ff8195"/><text x="401" y="434" text-anchor="middle" fill="#8a93a8" font-size="10" font-family="Arial">Sept.</text><rect x="478" y="264" width="24" height="153" rx="5" fill="#00d99b"/><rect x="507" y="333" width="24" height="84" rx="5" fill="#ff8195"/><text x="505" y="434" text-anchor="middle" fill="#8a93a8" font-size="10" font-family="Arial">Oct.</text>
+ <rect x="630" y="132" width="332" height="325" rx="17" fill="url(#panel)" stroke="#ffffff" stroke-opacity=".09"/>
+ <text x="650" y="164" fill="#f2f5fa" font-size="14" font-family="Arial" font-weight="700">Situation de trésorerie</text>
+ <text x="650" y="205" fill="#8a93a8" font-size="10" font-family="Arial">Solde de clôture</text><text x="650" y="240" fill="#f2f5fa" font-size="27" font-family="Arial" font-weight="700">18,75 M XAF</text>
+ <rect x="650" y="262" width="290" height="1" fill="#ffffff" fill-opacity=".1"/>
+ <text x="650" y="294" fill="#8a93a8" font-size="10" font-family="Arial">Compte actif</text><text x="650" y="316" fill="#dce3ee" font-size="12" font-family="Arial">Compte d'exploitation</text>
+ <rect x="650" y="343" width="105" height="27" rx="13" fill="#00e5a0" fill-opacity=".12" stroke="#00e5a0" stroke-opacity=".22"/><text x="702" y="361" text-anchor="middle" fill="#a4f7d8" font-size="10" font-family="Arial">Snapshot vérifié</text>
+ <text x="650" y="405" fill="#8a93a8" font-size="10" font-family="Arial">Montants affichés séparément par devise</text>
+ </g>
+<text x="1250" y="766" text-anchor="end" fill="#5f6a80" font-size="9" font-family="Arial">APERÇU STATIQUE · DONNÉES FICTIVES · NON ISSU D'UNE SESSION RÉELLE</text>
+</svg>
